@@ -44,9 +44,9 @@ nuclei-ai-agent/
 │       ├── system_prompt.txt
 │       └── user_prompt_template.txt
 ├── rag_data/
-│   └── nuclei-templates/          # Template nuclei cho RAG
-│       ├── cve-2023-1234.yaml
-│       └── exposed-database.yaml
+│   └── nuclei-templates/          # Template nuclei for RAG
+│       ├── cve-2023-1234.yaml     # Template CVE
+│       └── exposed-database.yaml  # Template Exposed Database
 ├── scripts/
 │   ├── ingest_data.py             # Load data into vector DB
 │   └── run_agent.sh               # Script running the application
