@@ -62,6 +62,7 @@ nuclei-ai-agent/
 │   └── test_api.py
 ├── .gitignore
 ├── requirements.txt
+├── work-flow.md
 └── README.md
 ```
 
