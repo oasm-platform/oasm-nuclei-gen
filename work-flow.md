@@ -1,124 +1,124 @@
 # 🛡️ OASM AI Agent Gen Template Nuclei
 
-Chatbot sinh template nuclei phục vụ pentest/tấn công mạng từ prompt có các hướng sau: AI Agent, RAG, Fine-tune. Mỗi hướng có ưu, nhược điểm riêng và cách triển khai kết hợp các hướng.
+A chatbot that generates Nuclei templates for penetration testing/network attacks from prompts using three main approaches: AI Agent, RAG, and Fine-tuning. Each approach has its own advantages, disadvantages, and implementation methods that can be combined.
 
 ## 🤖 AI Agent
 
-### 💡 Ý tưởng
+### 💡 Concept
 
-Dùng LLM như một "lập trình viên ảo" biết cách sinh ra template Nuclei, kiểm tra logic, và thậm chí tự chạy/validate với tool thực tế.
+Use LLM as a "virtual programmer" that knows how to generate Nuclei templates, check logic, and even run/validate with actual tools.
 
-### ✅ Ưu điểm
+### ✅ Advantages
 
-- **Tự động hóa toàn bộ quy trình**: từ prompt → code → test → trả kết quả
-- **Tích hợp đa tool**: Có thể kết hợp nhiều tool (subfinder, httpx, nuclei) trong pipeline
-- **Linh hoạt và mở rộng**: Dễ mở rộng sang format khác ngoài Nuclei
-- **Tương tác thời gian thực**: Có thể điều chỉnh và tối ưu template ngay lập tức
+- **Complete workflow automation**: from prompt → code → test → results
+- **Multi-tool integration**: Can combine multiple tools (subfinder, httpx, nuclei) in pipeline
+- **Flexible and extensible**: Easy to extend to other formats beyond Nuclei
+- **Real-time interaction**: Can adjust and optimize templates instantly
 
-### ❌ Nhược điểm
+### ❌ Disadvantages
 
-- **Phức tạp triển khai**: Cần build hệ thống điều phối (orchestration) phức tạp, có thể dùng LangChain, LlamaIndex, hay custom agent
-- **Phụ thuộc model**: Độ chính xác phụ thuộc vào khả năng hiểu của model và cách viết "tool functions"
-- **Chi phí cao**: Cần nhiều API calls và tài nguyên tính toán
+- **Complex implementation**: Requires building complex orchestration systems, possibly using LangChain, LlamaIndex, or custom agents
+- **Model dependency**: Accuracy depends on model's understanding and how "tool functions" are written
+- **High cost**: Requires many API calls and computational resources
 
-### 🎯 Khi nên dùng
+### 🎯 When to use
 
-Nếu bạn muốn chatbot không chỉ sinh ra template mà còn thực sự chạy test và tối ưu template tự động, kiểu "pentest copilot".
+When you want the chatbot to not only generate templates but also actually run tests and optimize templates automatically, like a "pentest copilot".
 
 ---
 
 ## 🔍 RAG (Retrieval-Augmented Generation)
 
-### 💡 Ý tưởng
+### 💡 Concept
 
-Tách kiến thức về cú pháp, tham số, ví dụ Nuclei template vào vector DB (ChromaDB, Elasticsearch), để LLM truy xuất trước khi sinh kết quả.
+Separate knowledge about syntax, parameters, and Nuclei template examples into vector DB (ChromaDB, Elasticsearch), so LLM can retrieve before generating results.
 
-### ✅ Ưu điểm
+### ✅ Advantages
 
-- **Giảm ảo tưởng**: Giảm hallucination vì LLM dựa vào dữ liệu thật
-- **Cập nhật dễ dàng**: Không cần fine-tune model, chỉ cần update vector DB khi có template mới
-- **Triển khai nhanh**: Setup tương đối đơn giản
-- **Cost-effective**: Chi phí thấp hơn so với fine-tuning
+- **Reduce hallucination**: Reduces hallucination because LLM relies on real data
+- **Easy updates**: No need to fine-tune model, just update vector DB when new templates arrive
+- **Quick deployment**: Relatively simple setup
+- **Cost-effective**: Lower cost compared to fine-tuning
 
-### ❌ Nhược điểm
+### ❌ Disadvantages
 
-- **Phụ thuộc chất lượng dữ liệu**: Model vẫn cần khả năng "sáng tạo" dựa trên dữ liệu retrieve được
-- **Hiệu suất retrieval**: Nếu prompt quá xa ví dụ thì kết quả có thể yếu
-- **Giới hạn ngữ cảnh**: Số lượng template retrieve bị giới hạn bởi context window
+- **Data quality dependency**: Model still needs "creativity" based on retrieved data
+- **Retrieval performance**: If prompt is too far from examples, results may be weak
+- **Context limitations**: Number of retrieved templates limited by context window
 
-### 🎯 Khi nên dùng
+### 🎯 When to use
 
-Nếu bạn có kho template Nuclei lớn và muốn chatbot sinh output bám sát format chuẩn, tránh lỗi cú pháp.
+When you have a large repository of Nuclei templates and want the chatbot to generate output that closely follows standard format, avoiding syntax errors.
 
 ---
 
 ## 🎯 Fine-tune
 
-### 💡 Ý tưởng
+### 💡 Concept
 
-Dạy hẳn model một kỹ năng chuyên biệt: từ yêu cầu bảo mật → sinh Nuclei template chuẩn.
+Teach the model a specialized skill: from security requirements → generate standard Nuclei templates.
 
-### ✅ Ưu điểm
+### ✅ Advantages
 
-- **Độ chính xác cao**: Độ chính xác cao hơn với task chuyên biệt
-- **Hiệu suất tốt**: Không cần RAG nếu model đã học đủ dữ liệu
-- **Tùy chỉnh sâu**: Có thể tối ưu cho style và format riêng của tổ chức
-- **Latency thấp**: Không cần thời gian retrieve dữ liệu
+- **High accuracy**: Higher accuracy for specialized tasks
+- **Good performance**: No need for RAG if model has learned enough data
+- **Deep customization**: Can optimize for organization's specific style and format
+- **Low latency**: No time needed to retrieve data
 
-### ❌ Nhược điểm
+### ❌ Disadvantages
 
-- **Chi phí cao**: Tốn dữ liệu huấn luyện (hàng ngàn template kèm mô tả)
-- **Thời gian lâu**: Tốn chi phí và thời gian fine-tune
-- **Khó cập nhật**: Model khó cập nhật khi có version mới của Nuclei (phải fine-tune lại)
-- **Overfitting**: Có thể bị overfitting nếu dữ liệu không đủ đa dạng
+- **High cost**: Requires training data (thousands of templates with descriptions)
+- **Long time**: Expensive and time-consuming fine-tuning process
+- **Hard to update**: Model difficult to update when new Nuclei versions arrive (need to fine-tune again)
+- **Overfitting**: May overfit if data is not diverse enough
 
-### 🎯 Khi nên dùng
+### 🎯 When to use
 
-Nếu bạn có dữ liệu training lớn và muốn chatbot sinh output chính xác cao, đặc biệt cho các use case chuyên biệt.
+When you have large training data and want the chatbot to generate high-accuracy output, especially for specialized use cases.
 
 ---
 
-## 🔄 Kết hợp các hướng
+## 🔄 Combining Approaches
 
-### 🏗️ Kiến trúc Hybrid
+### 🏗️ Hybrid Architecture
 
 ```
-📝 Prompt người dùng
+📝 User prompt
     ↓
-🔍 RAG (tìm template liên quan từ kho vector DB)
+🔍 RAG (find related templates from vector DB)
     ↓
-🤖 AI Agent → chỉnh sửa / build template mới
+🤖 AI Agent → modify / build new template
     ↓
-✅ Agent chạy nuclei --validate
+✅ Agent runs nuclei --validate
     ↓
-📊 Trả kết quả kèm log / gợi ý tối ưu
+📊 Return results with logs / optimization suggestions
 ```
 
-## 📋 Thành phần cần bổ sung
+## 📋 Additional Components Needed
 
 ### 🗄️ Database Schema
 
-- **Templates Collection**: Lưu trữ templates với metadata
-- **Vulnerabilities DB**: Database các lỗ hổng và signatures
-- **User Sessions**: Tracking user interactions và preferences
+- **Templates Collection**: Store templates with metadata
+- **Vulnerabilities DB**: Database of vulnerabilities and signatures
+- **User Sessions**: Track user interactions and preferences
 
 ### 🔐 Security Features
 
-- **Input Validation**: Validate user prompts để tránh injection
-- **Rate Limiting**: Giới hạn số requests per user
-- **Audit Logging**: Log tất cả generated templates
-- **Template Sanitization**: Clean templates trước khi execute
+- **Input Validation**: Validate user prompts to prevent injection
+- **Rate Limiting**: Limit requests per user
+- **Audit Logging**: Log all generated templates
+- **Template Sanitization**: Clean templates before execution
 
 ### 📊 Monitoring & Analytics
 
 - **Template Success Rate**: Track validation success rate
-- **User Feedback Loop**: Collect feedback để improve model
+- **User Feedback Loop**: Collect feedback to improve model
 - **Performance Metrics**: Response time, accuracy metrics
 - **Usage Analytics**: Most requested vulnerability types
 
 ### 🔧 Additional Tools Integration
 
-- **CVE Database**: Tự động cập nhật từ NVD
-- **Shodan API**: Enrich templates với real-world data
+- **CVE Database**: Automatically update from NVD
+- **Shodan API**: Enrich templates with real-world data
 - **GitHub Integration**: Pull latest nuclei templates
-- **OWASP Integration**: Map với OWASP Top 10
+- **OWASP Integration**: Map with OWASP Top 10
