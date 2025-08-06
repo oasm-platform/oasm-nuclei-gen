@@ -126,7 +126,7 @@ vector_db:
 # Download nuclei templates
 git clone https://github.com/projectdiscovery/nuclei-templates.git rag_data/nuclei-templates
 
-# Nạp dữ liệu vào vector database
+# Load data into vector database
 python scripts/ingest_data.py
 ```
 
