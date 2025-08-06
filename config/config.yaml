@@ -8,7 +8,7 @@ app:
 
 # Large Language Model Configuration
 llm:
-  provider: "openai"  # openai, huggingface, local
+  provider: "openai" # openai, huggingface, local
   model: "gpt-4"
   temperature: 0.7
   max_tokens: 2000
@@ -16,28 +16,28 @@ llm:
 
 # Vector Database Configuration
 vector_db:
-  type: "chromadb"  # chromadb, pinecone, faiss
+  type: "chromadb" # chromadb, pinecone, faiss
   persist_directory: "./chroma_db"
   collection_name: "nuclei_templates"
-  embedding_model: "text-embedding-ada-002"
+  embedding_model: "all-MiniLM-L6-v2"  # Free SentenceTransformer model
   chunk_size: 1000
   chunk_overlap: 200
 
 # Nuclei Configuration
 nuclei:
-  binary_path: "nuclei"  # Path to nuclei binary
+  binary_path: "nuclei" # Path to nuclei binary
   timeout: 30
   validate_args:
     - "--validate"
     - "--verbose"
-  templates_dir: "./rag_data/nuclei-templates"
+  templates_dir: "./rag_data/nuclei_templates"
 
 # RAG Configuration
 rag:
   max_retrieved_docs: 5
   similarity_threshold: 0.7
-  search_type: "similarity"  # similarity, mmr
-  
+  search_type: "similarity" # similarity, mmr
+
 # Logging Configuration
 logging:
   level: "INFO"
@@ -45,7 +45,7 @@ logging:
   handlers:
     - type: "file"
       filename: "logs/app.log"
-      max_bytes: 10485760  # 10MB
+      max_bytes: 10485760 # 10MB
       backup_count: 5
     - type: "console"
 
@@ -57,12 +57,12 @@ security:
   input_validation:
     max_prompt_length: 1000
     allowed_file_types: [".yaml", ".yml"]
-  
+
 # Performance Configuration
 performance:
   max_concurrent_requests: 10
   request_timeout: 120
-  cache_ttl: 3600  # 1 hour
+  cache_ttl: 3600 # 1 hour
 
 # Template Generation Configuration
 template_generation:

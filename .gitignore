@@ -51,6 +51,9 @@ config/secrets.yaml
 logs/
 chroma_db/
 *.log
+logs/app.log
+logs/nuclei.log
+logs/rag.log
 
 # API Keys and sensitive data
 .env
@@ -85,3 +88,6 @@ tmp/
 temp/
 *.tmp
 *.temp
+
+# Template Nuclei
+rag_data/nuclei_templates

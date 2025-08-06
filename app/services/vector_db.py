@@ -29,7 +29,15 @@ class VectorDBService:
         embedding_model = self.config.get("embedding_model", "text-embedding-ada-002")
         
         if embedding_model.startswith("text-embedding"):
-            self.embeddings = OpenAIEmbeddings(model=embedding_model)
+            # Load OpenAI API key from secrets
+            secrets_path = Path("config/secrets.yaml")
+            api_key = None
+            if secrets_path.exists():
+                with open(secrets_path, 'r') as f:
+                    secrets = yaml.safe_load(f)
+                    api_key = secrets.get("openai_api_key") 
+            
+            self.embeddings = OpenAIEmbeddings(model=embedding_model, openai_api_key=api_key)
         else:
             self.embeddings = SentenceTransformer(embedding_model)
     
@@ -69,7 +77,7 @@ class VectorDBService:
         try:
             self.collection = self.client.get_collection(collection_name)
             logger.info(f"Loaded existing collection: {collection_name}")
-        except ValueError:
+        except Exception:
             self.collection = self.client.create_collection(
                 name=collection_name,
                 metadata={"hnsw:space": "cosine"}

@@ -119,14 +119,14 @@ setup_config() {
 init_rag_data() {
     log_step "Checking RAG data..."
     
-    if [ ! -d "$RAG_DATA_DIR/nuclei-templates" ] || [ -z "$(ls -A "$RAG_DATA_DIR/nuclei-templates" 2>/dev/null)" ]; then
+    if [ ! -d "$RAG_DATA_DIR/nuclei_templates" ] || [ -z "$(ls -A "$RAG_DATA_DIR/nuclei_templates" 2>/dev/null)" ]; then
         log_warn "No Nuclei templates found for RAG. Setting up sample templates..."
         
         cd "$PROJECT_ROOT"
         $PYTHON_CMD scripts/ingest_data.py --setup-samples
         
         log_info "Sample templates created. For production, consider downloading official templates:"
-        echo "  git clone https://github.com/projectdiscovery/nuclei-templates.git $RAG_DATA_DIR/nuclei-templates"
+        echo "  git clone https://github.com/projectdiscovery/nuclei_templates.git $RAG_DATA_DIR/nuclei_templates"
     else
         log_info "RAG templates directory exists"
     fi
@@ -137,7 +137,7 @@ load_templates() {
     log_step "Loading templates into vector database..."
     
     cd "$PROJECT_ROOT"
-    $PYTHON_CMD scripts/ingest_data.py --templates-dir "$RAG_DATA_DIR/nuclei-templates"
+    $PYTHON_CMD scripts/ingest_data.py --templates-dir "$RAG_DATA_DIR/nuclei_templates"
 }
 
 # Start the application

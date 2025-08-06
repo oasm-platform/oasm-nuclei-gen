@@ -210,7 +210,7 @@ Template Content:
             await self.initialize()
         
         if not templates_dir:
-            templates_dir = Path(self.config.get("nuclei", {}).get("templates_dir", "./rag_data/nuclei-templates"))
+            templates_dir = Path(self.config.get("nuclei", {}).get("templates_dir", "./rag_data/nuclei_templates"))
         
         # Clear existing collection
         await self.vector_db.delete_collection()

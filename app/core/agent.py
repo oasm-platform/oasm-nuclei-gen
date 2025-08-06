@@ -41,11 +41,21 @@ class NucleiAgent:
     
     def _initialize_llm(self) -> ChatOpenAI:
         llm_config = self.config.get("llm", {})
+        
+        # Load OpenAI API key from secrets
+        secrets_path = Path("config/secrets.yaml")
+        api_key = None
+        if secrets_path.exists():
+            with open(secrets_path, 'r') as f:
+                secrets = yaml.safe_load(f)
+                api_key = secrets.get("openai_api_key") or secrets.get("openai", {}).get("api_key")
+        
         return ChatOpenAI(
             model=llm_config.get("model", "gpt-4"),
             temperature=llm_config.get("temperature", 0.7),
             max_tokens=llm_config.get("max_tokens", 2000),
-            timeout=llm_config.get("timeout", 30)
+            timeout=llm_config.get("timeout", 30),
+            openai_api_key=api_key
         )
     
     def _load_system_prompt(self) -> str:

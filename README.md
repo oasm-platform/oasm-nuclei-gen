@@ -44,7 +44,7 @@ nuclei-ai-agent/
 │       ├── system_prompt.txt
 │       └── user_prompt_template.txt
 ├── rag_data/
-│   └── nuclei-templates/          # Template nuclei for RAG
+│   └── nuclei_templates/          # Template nuclei for RAG
 │       ├── cve-2023-1234.yaml     # Template CVE
 │       └── exposed-database.yaml  # Template Exposed Database
 ├── scripts/
@@ -125,7 +125,14 @@ vector_db:
 
 ```bash
 # Download nuclei templates
-git clone https://github.com/projectdiscovery/nuclei-templates.git rag_data/nuclei-templates
+git clone https://github.com/projectdiscovery/nuclei_templates.git rag_data/nuclei_templates
+
+# Set OPENAI_API_KEY environment variable
+# cmd
+set OPENAI_API_KEY="your-openai-api-key-here"
+
+# powershell
+$env:OPENAI_API_KEY="your-openai-api-key-here"
 
 # Load data into vector database
 python scripts/ingest_data.py
@@ -139,7 +146,7 @@ chmod +x scripts/run_agent.sh
 ./scripts/run_agent.sh
 
 # Or run directly
-python app/main.py
+python -m app.main
 ```
 
 ## 🎮 Usage

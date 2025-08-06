@@ -113,7 +113,7 @@ async def validate_templates_directory(templates_dir: Path) -> bool:
 
 
 async def setup_sample_templates(rag_data_dir: Path):
-    nuclei_templates_dir = rag_data_dir / "nuclei-templates"
+    nuclei_templates_dir = rag_data_dir / "nuclei_templates"
     
     if nuclei_templates_dir.exists():
         logger.info("Nuclei templates directory already exists")
@@ -208,7 +208,7 @@ async def main():
     parser.add_argument(
         "--templates-dir", 
         type=Path,
-        default=Path("rag_data/nuclei-templates"),
+        default=Path("rag_data/nuclei_templates"),
         help="Path to Nuclei templates directory"
     )
     parser.add_argument(
