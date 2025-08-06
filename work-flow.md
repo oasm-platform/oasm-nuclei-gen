@@ -1,4 +1,4 @@
-# 🛡️ OASM Gen Template Nuclei
+# 🛡️ OASM AI Agent Gen Template Nuclei
 
 Chatbot sinh template nuclei phục vụ pentest/tấn công mạng từ prompt có các hướng sau: AI Agent, RAG, Fine-tune. Mỗi hướng có ưu, nhược điểm riêng và cách triển khai kết hợp các hướng.
 
