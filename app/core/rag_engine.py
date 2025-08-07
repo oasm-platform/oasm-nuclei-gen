@@ -2,40 +2,44 @@
 RAG Engine for retrieving and generating Nuclei templates using similar templates
 """
 import logging
+import os
 from pathlib import Path
 from typing import List, Dict, Any, Optional
-import yaml
+from dotenv import load_dotenv
 
 from app.services.vector_db import VectorDBService
 
+# Load environment variables
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
 
 class RAGEngine:
     def __init__(self, config: Optional[Dict[str, Any]] = None):
-        self.config = config or self._load_default_config()
+        self.config = config or self._load_env_config()
         self.vector_db = VectorDBService(self.config.get("vector_db", {}))
         self.initialized = False
     
-    def _load_default_config(self) -> Dict[str, Any]:
-        config_path = Path("config/config.yaml")
-        if config_path.exists():
-            with open(config_path, 'r') as f:
-                return yaml.safe_load(f)
+    def _load_env_config(self) -> Dict[str, Any]:
+        """Load configuration from environment variables"""
         return {
             "vector_db": {
-                "type": "chromadb",
-                "persist_directory": "./chroma_db",
-                "collection_name": "nuclei_templates",
-                "embedding_model": "text-embedding-ada-002",
-                "chunk_size": 1000,
-                "chunk_overlap": 200
+                "type": os.getenv("VECTOR_DB_TYPE", "chromadb"),
+                "mode": os.getenv("VECTOR_DB_MODE", "persistent"),
+                "persist_directory": os.getenv("VECTOR_DB_PERSIST_DIRECTORY", "./chroma_db"),
+                "collection_name": os.getenv("VECTOR_DB_COLLECTION_NAME", "nuclei_templates"),
+                "embedding_model": os.getenv("VECTOR_DB_EMBEDDING_MODEL", "all-MiniLM-L6-v2"),
+                "chunk_size": int(os.getenv("VECTOR_DB_CHUNK_SIZE", "1000")),
+                "chunk_overlap": int(os.getenv("VECTOR_DB_CHUNK_OVERLAP", "200"))
             },
             "rag": {
-                "max_retrieved_docs": 5,
-                "similarity_threshold": 0.7,
-                "search_type": "similarity"
+                "max_retrieved_docs": int(os.getenv("RAG_MAX_RETRIEVED_DOCS", "5")),
+                "similarity_threshold": float(os.getenv("RAG_SIMILARITY_THRESHOLD", "0.7")),
+                "search_type": os.getenv("RAG_SEARCH_TYPE", "similarity")
+            },
+            "nuclei": {
+                "templates_dir": os.getenv("NUCLEI_TEMPLATES_DIR", "rag_data/nuclei_templates")
             }
         }
     

@@ -8,6 +8,7 @@ import yaml
 
 import chromadb
 from chromadb.config import Settings
+import os
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 from sentence_transformers import SentenceTransformer
@@ -25,22 +26,26 @@ class VectorDBService:
         self._setup_embeddings()
         self._setup_text_splitter()
     
+    """
+
+    Setup embeddings based on the configuration
+    """
     def _setup_embeddings(self):
         embedding_model = self.config.get("embedding_model", "text-embedding-ada-002")
         
         if embedding_model.startswith("text-embedding"):
-            # Load OpenAI API key from secrets
-            secrets_path = Path("config/secrets.yaml")
-            api_key = None
-            if secrets_path.exists():
-                with open(secrets_path, 'r') as f:
-                    secrets = yaml.safe_load(f)
-                    api_key = secrets.get("openai_api_key") 
+            # Load OpenAI API key from environment
+            api_key = os.getenv("OPENAI_API_KEY")
+            if not api_key:
+                logger.warning("OPENAI_API_KEY not found in environment variables")
             
             self.embeddings = OpenAIEmbeddings(model=embedding_model, openai_api_key=api_key)
         else:
             self.embeddings = SentenceTransformer(embedding_model)
     
+    """
+    Setup text splitter based on the configuration
+    """
     def _setup_text_splitter(self):
         chunk_size = self.config.get("chunk_size", 1000)
         chunk_overlap = self.config.get("chunk_overlap", 200)
@@ -51,6 +56,9 @@ class VectorDBService:
             length_function=len,
         )
     
+    """
+    Initialize the vector database based on the configuration
+    """
     async def initialize(self):
         db_type = self.config.get("type", "chromadb")
         
@@ -59,20 +67,44 @@ class VectorDBService:
         else:
             raise ValueError(f"Unsupported vector database type: {db_type}")
     
+    """
+    Initialize the ChromaDB vector database
+    """
     async def _initialize_chromadb(self):
-        persist_directory = self.config.get("persist_directory", "./chroma_db")
         collection_name = self.config.get("collection_name", "nuclei_templates")
         
-        # Ensure directory exists
-        Path(persist_directory).mkdir(parents=True, exist_ok=True)
+        # Check if we should use HTTP client (Docker mode) or embedded mode
+        chromadb_mode = self.config.get("mode", os.getenv("CHROMADB_MODE", "embedded"))
         
-        self.client = chromadb.PersistentClient(
-            path=persist_directory,
-            settings=Settings(
-                anonymized_telemetry=False,
-                allow_reset=True
+        if chromadb_mode == "client":
+            # HTTP Client mode for Docker
+            host = self.config.get("host", os.getenv("CHROMADB_HOST", "localhost"))
+            port = self.config.get("port", int(os.getenv("CHROMADB_PORT", "8001")))
+            
+            logger.info(f"Connecting to ChromaDB server at {host}:{port}")
+            self.client = chromadb.HttpClient(
+                host=host,
+                port=port,
+                settings=Settings(
+                    anonymized_telemetry=False,
+                    allow_reset=True
+                )
             )
-        )
+        else:
+            # Embedded mode (original implementation)
+            persist_directory = self.config.get("persist_directory", "./chroma_db")
+            
+            # Ensure directory exists
+            Path(persist_directory).mkdir(parents=True, exist_ok=True)
+            
+            logger.info(f"Using embedded ChromaDB at {persist_directory}")
+            self.client = chromadb.PersistentClient(
+                path=persist_directory,
+                settings=Settings(
+                    anonymized_telemetry=False,
+                    allow_reset=True
+                )
+            )
         
         try:
             self.collection = self.client.get_collection(collection_name)
@@ -84,6 +116,9 @@ class VectorDBService:
             )
             logger.info(f"Created new collection: {collection_name}")
     
+    """
+    Add documents to the vector database
+    """
     async def add_documents(self, documents: List[Dict[str, Any]]) -> int:
         if not self.collection:
             raise RuntimeError("Vector database not initialized")
@@ -127,6 +162,9 @@ class VectorDBService:
         logger.info(f"Successfully added {total_added} document chunks to vector database")
         return total_added
     
+    """
+    Split document into chunks
+    """
     def _split_document(self, document: Dict[str, Any]) -> List[Dict[str, Any]]:
         content = document.get("content", "")
         metadata = document.get("metadata", {})
@@ -157,6 +195,9 @@ class VectorDBService:
         
         return processed_chunks
     
+    """
+    Search for similar documents
+    """
     async def search_similar(
         self,
         query: str,
@@ -192,6 +233,9 @@ class VectorDBService:
         
         return filtered_results
     
+    """
+    Get collection statistics
+    """
     async def get_collection_stats(self) -> Dict[str, Any]:
         if not self.collection:
             return {"error": "Collection not initialized"}
@@ -202,12 +246,18 @@ class VectorDBService:
             "collection_name": self.collection.name
         }
     
+    """
+    Delete the collection
+    """
     async def delete_collection(self):
         if self.collection:
             self.client.delete_collection(self.collection.name)
             self.collection = None
             logger.info("Collection deleted")
     
+    """
+    Load a Nuclei template from a file
+    """
     def load_nuclei_template(self, template_path: Path) -> Optional[Dict[str, Any]]:
         try:
             with open(template_path, 'r', encoding='utf-8') as f:
@@ -246,6 +296,9 @@ class VectorDBService:
             logger.error(f"Error loading template {template_path}: {e}")
             return None
     
+    """
+    Bulk load Nuclei templates from a directory
+    """
     async def bulk_load_templates(self, templates_dir: Path) -> int:
         if not templates_dir.exists():
             logger.error(f"Templates directory not found: {templates_dir}")

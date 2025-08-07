@@ -1,0 +1,59 @@
+version: "3.8"
+
+services:
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: nuclei_chromadb
+    ports:
+      - "8001:8000" # ChromaDB default port mapped to 8001 to avoid conflicts
+    environment:
+      - CHROMA_SERVER_AUTHN_CREDENTIALS_FILE=/chroma/server.htpasswd
+      - CHROMA_SERVER_AUTHN_PROVIDER=chromadb.auth.basic_authn.BasicAuthenticationServerProvider
+      - ANONYMIZED_TELEMETRY=False
+      - IS_PERSISTENT=TRUE
+      - PERSIST_DIRECTORY=/chroma/chroma
+    volumes:
+      - chromadb_data:/chroma/chroma
+      - ./config/chromadb:/chroma/config
+    networks:
+      - nuclei_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  nuclei-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nuclei_agent_app
+    ports:
+      - "8000:8000"
+    environment:
+      - CHROMADB_HOST=chromadb
+      - CHROMADB_PORT=8000
+      - CHROMADB_MODE=client
+      - PYTHONPATH=/app
+    volumes:
+      - ./config:/app/config
+      - ./logs:/app/logs
+      - ./rag_data:/app/rag_data
+      - ./templates:/app/templates
+    networks:
+      - nuclei_network
+    depends_on:
+      chromadb:
+        condition: service_healthy
+    restart: unless-stopped
+    command: ["python", "-m", "app.main"]
+
+volumes:
+  chromadb_data:
+    driver: local
+
+networks:
+  nuclei_network:
+    driver: bridge

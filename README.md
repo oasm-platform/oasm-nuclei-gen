@@ -19,7 +19,7 @@ The Nuclei AI Agent Template Generator is an AI system that automates the creati
 ## 📋 Reference Documentation
 
 - **Presentation Slides**: [AI Agent Gen Template Nuclei](https://www.canva.com/design/DAGvRL9BIz0/B1F-Rg6qyltfKrNVrzrrBg/edit?utm_content=DAGvRL9BIz0&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton)
-- **Detailed Workflow**: [Work Flow AI Agent Gen Template Nuclei](work-flow.md)
+- **Detailed Workflow**: [Work Flow AI Agent Gen Template Nuclei](docs/work-flow.md)
 
 ## 🏗️ Project Structure
 
@@ -49,7 +49,6 @@ nuclei-ai-agent/
 │       └── exposed-database.yaml  # Template Exposed Database
 ├── scripts/
 │   ├── ingest_data.py             # Load data into vector DB
-│   └── run_agent.sh               # Script running the application
 ├── config/
 │   ├── config.yaml                # Global configuration
 │   └── secrets.yaml               # API keys (sensitive data)
@@ -62,7 +61,6 @@ nuclei-ai-agent/
 │   └── test_api.py
 ├── .gitignore
 ├── requirements.txt
-├── work-flow.md
 └── README.md
 ```
 
@@ -73,7 +71,71 @@ nuclei-ai-agent/
 - Python 3.8+
 - Nuclei CLI tool
 - Vector Database (ChromaDB/Pinecone/FAISS)
-- OpenAI API key hoặc local LLM
+- OpenAI API key or local LLM
+- Docker & Docker Compose (for containerized deployment)
+
+## 🐳 Quick Start with Docker (Recommended)
+
+The easiest way to get started is using Docker Compose with ChromaDB:
+
+### Prerequisites
+
+- Docker and Docker Compose installed
+- At least 2GB RAM available
+
+### 1. Clone and Setup
+
+```bash
+git clone https://github.com/your-username/nuclei-ai-agent.git
+cd nuclei-ai-agent
+
+# Copy environment file
+cp .env.example .env
+```
+
+### 2. Configure Environment
+
+Edit `.env` file:
+
+```bash
+# API Keys (optional - uses free local embedding model by default)
+OPENAI_API_KEY=your_openai_api_key_here
+GEMINI_API_KEY=your_gemini_api_key_here
+```
+
+### 3. Start Services
+
+```bash
+# Start ChromaDB and application
+docker-compose up -d
+
+# Check services are running
+docker-compose ps
+```
+
+### 4. Load Templates
+
+```bash
+# Download sample templates (optional)
+git clone https://github.com/projectdiscovery/nuclei-templates.git rag_data/nuclei_templates
+
+# Load templates into ChromaDB
+docker-compose exec nuclei-agent python scripts/ingest_data.py
+```
+
+### 5. Test API
+
+```bash
+curl http://localhost:8000/health
+```
+
+**🎉 That's it! Your Nuclei AI Agent is now running with ChromaDB.**
+
+📖 **For detailed Docker setup instructions, see [DOCKER_SETUP_GUIDE.md](DOCKER_SETUP_GUIDE.md)**
+
+---
+
+## 🔧 Manual Installation (Alternative)
 
 ### Step 1: Clone repository
 
@@ -125,14 +187,7 @@ vector_db:
 
 ```bash
 # Download nuclei templates
-git clone https://github.com/projectdiscovery/nuclei_templates.git rag_data/nuclei_templates
-
-# Set OPENAI_API_KEY environment variable
-# cmd
-set OPENAI_API_KEY="your-openai-api-key-here"
-
-# powershell
-$env:OPENAI_API_KEY="your-openai-api-key-here"
+git clone https://github.com/projectdiscovery/nuclei-templates.git rag_data/nuclei_templates
 
 # Load data into vector database
 python scripts/ingest_data.py

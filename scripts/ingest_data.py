@@ -1,20 +1,22 @@
 """
-Data ingestion script for loading Nuclei templates into vector database
+Environment-based data ingestion script for loading Nuclei templates into ChromaDB
 """
 import asyncio
 import argparse
 import logging
 import sys
+import os
 from pathlib import Path
 from typing import List, Optional
-import yaml
+from dotenv import load_dotenv
 
 # Add project root to path
 sys.path.append(str(Path(__file__).parent.parent))
 
 from app.services.vector_db import VectorDBService
-from app.core.rag_engine import RAGEngine
 
+# Load environment variables
+load_dotenv()
 
 logging.basicConfig(
     level=logging.INFO,
@@ -23,188 +25,120 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-async def load_config(config_path: Optional[Path] = None) -> dict:
-    if not config_path:
-        config_path = Path("config/config.yaml")
+async def load_env_config() -> dict:
+    """Load configuration from environment variables"""
+    logger.info("Loading configuration from environment variables")
     
-    if config_path.exists():
-        with open(config_path, 'r') as f:
-            return yaml.safe_load(f)
-    else:
-        logger.error(f"Configuration file not found: {config_path}")
-        return {}
+    config = {
+        "app": {
+            "name": os.getenv("APP_NAME", "Nuclei AI Agent Template Generator"),
+            "version": os.getenv("APP_VERSION", "1.0.0"),
+            "debug": os.getenv("APP_DEBUG", "false").lower() == "true",
+            "host": os.getenv("APP_HOST", "0.0.0.0"),
+            "port": int(os.getenv("APP_PORT", "8000"))
+        },
+        "llm": {
+            "provider": os.getenv("LLM_PROVIDER", "gemini"),
+            "model": os.getenv("LLM_MODEL", "gemini-2.0-flash-exp"),
+            "temperature": float(os.getenv("LLM_TEMPERATURE", "0.7")),
+            "max_tokens": int(os.getenv("LLM_MAX_TOKENS", "2000")),
+            "timeout": int(os.getenv("LLM_TIMEOUT", "30"))
+        },
+        "vector_db": {
+            "type": os.getenv("VECTOR_DB_TYPE", "chromadb"),
+            "mode": os.getenv("VECTOR_DB_MODE", "client"),
+            "host": os.getenv("VECTOR_DB_HOST", "localhost"),
+            "port": int(os.getenv("VECTOR_DB_PORT", "8001")),
+            "collection_name": os.getenv("VECTOR_DB_COLLECTION_NAME", "nuclei_templates"),
+            "embedding_model": os.getenv("VECTOR_DB_EMBEDDING_MODEL", "all-MiniLM-L6-v2"),
+            "chunk_size": int(os.getenv("VECTOR_DB_CHUNK_SIZE", "1000")),
+            "chunk_overlap": int(os.getenv("VECTOR_DB_CHUNK_OVERLAP", "200"))
+        },
+        "nuclei": {
+            "binary_path": os.getenv("NUCLEI_BINARY_PATH", "nuclei"),
+            "timeout": int(os.getenv("NUCLEI_TIMEOUT", "30")),
+            "validate_args": os.getenv("NUCLEI_VALIDATE_ARGS", "--validate,--verbose").split(","),
+            "templates_dir": os.getenv("NUCLEI_TEMPLATES_DIR", "rag_data/nuclei_templates")
+        },
+        "rag": {
+            "max_retrieved_docs": int(os.getenv("RAG_MAX_RETRIEVED_DOCS", "5")),
+            "similarity_threshold": float(os.getenv("RAG_SIMILARITY_THRESHOLD", "0.7")),
+            "search_type": os.getenv("RAG_SEARCH_TYPE", "similarity")
+        }
+    }
+    
+    return config
 
 
-async def ingest_nuclei_templates(
-    templates_dir: Path,
-    config: dict,
-    force_reload: bool = False
-) -> int:
-    logger.info(f"Starting template ingestion from: {templates_dir}")
+async def wait_for_chromadb(host: str, port: int, timeout: int = 60):
+    """Wait for ChromaDB to be available"""
+    import time
+    import socket
     
-    # Initialize vector database service
-    vector_db_service = VectorDBService(config.get("vector_db", {}))
-    await vector_db_service.initialize()
+    logger.info(f"Waiting for ChromaDB at {host}:{port}...")
+    start_time = time.time()
     
-    # Check if collection already has data
-    stats = await vector_db_service.get_collection_stats()
-    existing_count = stats.get("total_documents", 0)
-    
-    if existing_count > 0 and not force_reload:
-        logger.info(f"Vector database already contains {existing_count} documents")
-        user_input = input("Do you want to reload all templates? (y/N): ")
-        if user_input.lower() != 'y':
-            logger.info("Skipping ingestion")
-            return existing_count
-        else:
-            logger.info("Clearing existing collection...")
-            await vector_db_service.delete_collection()
-            await vector_db_service.initialize()
-    elif force_reload and existing_count > 0:
-        logger.info(f"Force reload enabled. Clearing existing {existing_count} documents...")
-        await vector_db_service.delete_collection()
-        await vector_db_service.initialize()
-    
-    # Load templates
-    count = await vector_db_service.bulk_load_templates(templates_dir)
-    
-    logger.info(f"Ingestion completed. Total templates loaded: {count}")
-    return count
-
-
-async def validate_templates_directory(templates_dir: Path) -> bool:
-    if not templates_dir.exists():
-        logger.error(f"Templates directory not found: {templates_dir}")
-        return False
-    
-    # Count YAML files
-    yaml_files = list(templates_dir.rglob("*.yaml")) + list(templates_dir.rglob("*.yml"))
-    
-    if not yaml_files:
-        logger.error(f"No YAML files found in: {templates_dir}")
-        return False
-    
-    logger.info(f"Found {len(yaml_files)} YAML files in templates directory")
-    
-    # Validate a few sample templates
-    sample_files = yaml_files[:5]  # Check first 5 files
-    valid_count = 0
-    
-    for template_file in sample_files:
+    while time.time() - start_time < timeout:
         try:
-            with open(template_file, 'r', encoding='utf-8') as f:
-                template_data = yaml.safe_load(f.read())
-                
-            # Check if it's a valid Nuclei template structure
-            if isinstance(template_data, dict) and 'id' in template_data and 'info' in template_data:
-                valid_count += 1
-            else:
-                logger.warning(f"Invalid template structure in: {template_file}")
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(5)
+            result = sock.connect_ex((host, port))
+            sock.close()
+            
+            if result == 0:
+                logger.info("ChromaDB is available!")
+                return True
                 
         except Exception as e:
-            logger.warning(f"Error reading template {template_file}: {e}")
+            logger.debug(f"Connection attempt failed: {e}")
+        
+        logger.info("ChromaDB not ready, waiting 5 seconds...")
+        time.sleep(5)
     
-    if valid_count == 0:
-        logger.error("No valid Nuclei templates found in sample files")
-        return False
-    
-    logger.info(f"Validated {valid_count}/{len(sample_files)} sample templates")
-    return True
+    logger.error(f"ChromaDB not available after {timeout} seconds")
+    return False
 
 
-async def setup_sample_templates(rag_data_dir: Path):
-    nuclei_templates_dir = rag_data_dir / "nuclei_templates"
+async def ingest_with_retry(templates_dir: Path, config: dict, max_retries: int = 3):
+    """Ingest data with retry logic"""
     
-    if nuclei_templates_dir.exists():
-        logger.info("Nuclei templates directory already exists")
-        return
+    for attempt in range(max_retries):
+        try:
+            logger.info(f"Ingestion attempt {attempt + 1}/{max_retries}")
+            
+            # Initialize vector database service
+            vector_db_service = VectorDBService(config.get("vector_db", {}))
+            
+            # Wait for ChromaDB if in client mode
+            vector_config = config.get("vector_db", {})
+            if vector_config.get("mode") == "client":
+                host = vector_config.get("host", "localhost")
+                port = vector_config.get("port", 8001)
+                
+                if not await wait_for_chromadb(host, port):
+                    raise Exception("ChromaDB not available")
+            
+            await vector_db_service.initialize()
+            
+            # Load templates
+            count = await vector_db_service.bulk_load_templates(templates_dir)
+            logger.info(f"Successfully ingested {count} templates")
+            
+            return count
+            
+        except Exception as e:
+            logger.error(f"Ingestion attempt {attempt + 1} failed: {e}")
+            if attempt == max_retries - 1:
+                raise
+            
+            logger.info("Retrying in 10 seconds...")
+            await asyncio.sleep(10)
     
-    logger.info("Setting up sample templates directory...")
-    nuclei_templates_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Create sample templates
-    sample_templates = [
-        {
-            "filename": "sql-injection-login.yaml",
-            "content": """id: sql-injection-login
-
-info:
-  name: SQL Injection in Login Form
-  author: ai-agent
-  severity: high
-  description: Detects SQL injection vulnerabilities in login forms
-  tags:
-    - sqli
-    - login
-    - injection
-
-http:
-  - method: POST
-    path:
-      - "{{BaseURL}}/login"
-      - "{{BaseURL}}/admin/login"
-    
-    headers:
-      Content-Type: application/x-www-form-urlencoded
-    
-    body: |
-      username=admin' OR '1'='1' -- &password=test
-    
-    matchers:
-      - type: word
-        words:
-          - "welcome"
-          - "dashboard"
-          - "admin panel"
-        condition: or
-      
-      - type: status
-        status:
-          - 200
-          - 302
-"""
-        },
-        {
-            "filename": "xss-reflected.yaml",
-            "content": """id: xss-reflected
-
-info:
-  name: Reflected Cross-Site Scripting
-  author: ai-agent  
-  severity: medium
-  description: Detects reflected XSS vulnerabilities
-  tags:
-    - xss
-    - reflected
-    - injection
-
-http:
-  - method: GET
-    path:
-      - "{{BaseURL}}/search?q=<script>alert('xss')</script>"
-      - "{{BaseURL}}/page?name=<img src=x onerror=alert('xss')>"
-    
-    matchers:
-      - type: word
-        words:
-          - "<script>alert('xss')</script>"
-          - "<img src=x onerror=alert('xss')>"
-        part: body
-        condition: or
-"""
-        }
-    ]
-    
-    for template in sample_templates:
-        template_path = nuclei_templates_dir / template["filename"]
-        with open(template_path, 'w', encoding='utf-8') as f:
-            f.write(template["content"])
-    
-    logger.info(f"Created {len(sample_templates)} sample templates")
+    return 0
 
 
 async def main():
-    parser = argparse.ArgumentParser(description="Ingest Nuclei templates into vector database")
+    parser = argparse.ArgumentParser(description="Environment-based Nuclei templates ingestion")
     parser.add_argument(
         "--templates-dir", 
         type=Path,
@@ -212,48 +146,42 @@ async def main():
         help="Path to Nuclei templates directory"
     )
     parser.add_argument(
-        "--config", 
-        type=Path,
-        help="Path to configuration file"
+        "--wait-timeout",
+        type=int,
+        default=60,
+        help="Seconds to wait for ChromaDB availability"
     )
     parser.add_argument(
-        "--force-reload", 
-        action="store_true",
-        help="Force reload all templates (clear existing data)"
-    )
-    parser.add_argument(
-        "--setup-samples", 
-        action="store_true",
-        help="Setup sample templates if directory doesn't exist"
+        "--max-retries",
+        type=int,
+        default=3,
+        help="Maximum ingestion retry attempts"
     )
     
     args = parser.parse_args()
     
     try:
-        # Load configuration
-        config = await load_config(args.config)
+        # Load environment-based configuration
+        config = await load_env_config()
         if not config:
             logger.error("Failed to load configuration")
             return 1
         
-        # Setup samples if requested
-        if args.setup_samples:
-            await setup_sample_templates(Path("rag_data"))
-        
-        # Validate templates directory
-        if not await validate_templates_directory(args.templates_dir):
-            logger.error("Templates directory validation failed")
+        # Check if templates directory exists
+        if not args.templates_dir.exists():
+            logger.error(f"Templates directory not found: {args.templates_dir}")
+            logger.info("Make sure the templates directory exists")
             return 1
         
-        # Ingest templates
-        count = await ingest_nuclei_templates(
+        # Ingest with retry logic
+        count = await ingest_with_retry(
             templates_dir=args.templates_dir,
             config=config,
-            force_reload=args.force_reload
+            max_retries=args.max_retries
         )
         
         if count > 0:
-            logger.info(f"Successfully ingested {count} templates")
+            logger.info(f"Ingestion completed successfully: {count} templates")
             return 0
         else:
             logger.error("No templates were ingested")

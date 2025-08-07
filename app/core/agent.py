@@ -2,11 +2,13 @@
 AI Agent for generating Nuclei templates using LangChain and RAG
 """
 import logging
+import os
 import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 import yaml
+from dotenv import load_dotenv
 
 from langchain.schema import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
@@ -26,7 +28,10 @@ logger = logging.getLogger(__name__)
 
 class NucleiAgent:
     def __init__(self, config: Optional[Dict[str, Any]] = None):
-        self.config = config or self._load_config()
+        # Load environment variables
+        load_dotenv()
+        
+        self.config = config or self._load_config_from_env()
         self.rag_engine = RAGEngine(self.config)
         self.nuclei_runner = NucleiRunner(self.config.get("nuclei", {}))
         self.llm = self._initialize_llm()
@@ -34,35 +39,75 @@ class NucleiAgent:
         self.system_prompt = self._load_system_prompt()
         self.user_prompt_template = self._load_user_prompt_template()
         
-    def _load_config(self) -> Dict[str, Any]:
-        config_path = Path("config/config.yaml")
-        if config_path.exists():
-            with open(config_path, 'r') as f:
-                return yaml.safe_load(f)
-        return {}
+    def _load_config_from_env(self) -> Dict[str, Any]:
+        """Load configuration from environment variables"""
+        return {
+            "app": {
+                "name": os.getenv("APP_NAME", "Nuclei AI Agent Template Generator"),
+                "version": os.getenv("APP_VERSION", "1.0.0"),
+                "debug": os.getenv("APP_DEBUG", "false").lower() == "true",
+                "host": os.getenv("APP_HOST", "0.0.0.0"),
+                "port": int(os.getenv("APP_PORT", "8000"))
+            },
+            "llm": {
+                "provider": os.getenv("LLM_PROVIDER", "gemini"),
+                "model": os.getenv("LLM_MODEL", "gemini-2.0-flash-exp"),
+                "temperature": float(os.getenv("LLM_TEMPERATURE", "0.7")),
+                "max_tokens": int(os.getenv("LLM_MAX_TOKENS", "2000")),
+                "timeout": int(os.getenv("LLM_TIMEOUT", "30"))
+            },
+            "vector_db": {
+                "type": os.getenv("VECTOR_DB_TYPE", "chromadb"),
+                "mode": os.getenv("VECTOR_DB_MODE", "persistent"),
+                "persist_directory": os.getenv("VECTOR_DB_PERSIST_DIRECTORY", "./chroma_db"),
+                "collection_name": os.getenv("VECTOR_DB_COLLECTION_NAME", "nuclei_templates"),
+                "embedding_model": os.getenv("VECTOR_DB_EMBEDDING_MODEL", "all-MiniLM-L6-v2"),
+                "chunk_size": int(os.getenv("VECTOR_DB_CHUNK_SIZE", "1000")),
+                "chunk_overlap": int(os.getenv("VECTOR_DB_CHUNK_OVERLAP", "200"))
+            },
+            "nuclei": {
+                "binary_path": os.getenv("NUCLEI_BINARY_PATH", "nuclei"),
+                "timeout": int(os.getenv("NUCLEI_TIMEOUT", "30")),
+                "templates_dir": os.getenv("NUCLEI_TEMPLATES_DIR", "./rag_data/nuclei_templates"),
+                "validate_args": os.getenv("NUCLEI_VALIDATE_ARGS", "--validate,--verbose").split(",")
+            },
+            "rag": {
+                "max_retrieved_docs": int(os.getenv("RAG_MAX_RETRIEVED_DOCS", "5")),
+                "similarity_threshold": float(os.getenv("RAG_SIMILARITY_THRESHOLD", "0.7")),
+                "search_type": os.getenv("RAG_SEARCH_TYPE", "similarity")
+            },
+            "template_generation": {
+                "max_retries": int(os.getenv("TEMPLATE_MAX_RETRIES", "3")),
+                "validation_required": os.getenv("TEMPLATE_VALIDATION_REQUIRED", "true").lower() == "true",
+                "output_format": os.getenv("TEMPLATE_OUTPUT_FORMAT", "yaml"),
+                "include_metadata": os.getenv("TEMPLATE_INCLUDE_METADATA", "true").lower() == "true"
+            }
+        }
     
     def _initialize_llm(self):
+        """Initialize LLM from environment variables"""
         llm_config = self.config.get("llm", {})
-        provider = llm_config.get("provider", "openai")
+        provider = llm_config.get("provider", "gemini")
         
-        # Load API keys from secrets
-        secrets_path = Path("config/secrets.yaml")
-        secrets = {}
-        if secrets_path.exists():
-            with open(secrets_path, 'r') as f:
-                secrets = yaml.safe_load(f)
+        logger.info(f"Initializing LLM with provider: {provider}")
         
         if provider == "gemini":
-            api_key = secrets.get("gemini_api_key") or secrets.get("gemini", {}).get("api_key")
+            api_key = os.getenv("GEMINI_API_KEY")
+            if not api_key:
+                raise ValueError("GEMINI_API_KEY environment variable is required for Gemini provider")
+            
             return ChatGoogleGenerativeAI(
-                model=llm_config.get("model", "gemini-2.0-flash"),
+                model=llm_config.get("model", "gemini-2.0-flash-exp"),
                 temperature=llm_config.get("temperature", 0.7),
                 max_tokens=llm_config.get("max_tokens", 2000),
                 timeout=llm_config.get("timeout", 30),
                 google_api_key=api_key
             )
-        else:  # Default to OpenAI
-            api_key = secrets.get("openai_api_key") or secrets.get("openai", {}).get("api_key")
+        else:  # OpenAI
+            api_key = os.getenv("OPENAI_API_KEY")
+            if not api_key:
+                raise ValueError("OPENAI_API_KEY environment variable is required for OpenAI provider")
+            
             return ChatOpenAI(
                 model=llm_config.get("model", "gpt-4"),
                 temperature=llm_config.get("temperature", 0.7),
