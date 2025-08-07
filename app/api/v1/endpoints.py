@@ -266,5 +266,5 @@ async def get_templates_by_tags(
             detail=ErrorResponse(
                 error="Internal server error during template search",
                 details={"exception": str(e)}
-            ).dict()
+            ).model_dump()
         )

@@ -107,8 +107,8 @@ brew install nuclei
 1. Copy the configuration sample file:
 
 ```bash
-cp config/config.yaml.example config/config.yaml
-cp config/secrets.yaml.example config/secrets.yaml
+cp config/config.example.yaml config/config.yaml
+cp config/secrets.example.yaml config/secrets.yaml
 ```
 
 2. Edit `config/secrets.yaml`:

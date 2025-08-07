@@ -96,37 +96,52 @@ class VectorDBService:
         if not processed_docs:
             return 0
         
-        # Generate embeddings
-        texts = [doc["content"] for doc in processed_docs]
-        if hasattr(self.embeddings, 'embed_documents'):
-            embeddings = self.embeddings.embed_documents(texts)
-        else:
-            embeddings = self.embeddings.encode(texts).tolist()
+        # Process in smaller batches to avoid ChromaDB limits
+        batch_size = 5000  # Safe batch size for ChromaDB
+        total_added = 0
         
-        # Add to collection
-        ids = [doc["id"] for doc in processed_docs]
-        metadatas = [doc["metadata"] for doc in processed_docs]
+        for i in range(0, len(processed_docs), batch_size):
+            batch_docs = processed_docs[i:i + batch_size]
+            
+            # Generate embeddings for batch
+            texts = [doc["content"] for doc in batch_docs]
+            if hasattr(self.embeddings, 'embed_documents'):
+                embeddings = self.embeddings.embed_documents(texts)
+            else:
+                embeddings = self.embeddings.encode(texts).tolist()
+            
+            # Add batch to collection
+            ids = [doc["id"] for doc in batch_docs]
+            metadatas = [doc["metadata"] for doc in batch_docs]
+            
+            self.collection.add(
+                embeddings=embeddings,
+                documents=texts,
+                metadatas=metadatas,
+                ids=ids
+            )
+            
+            total_added += len(batch_docs)
+            logger.info(f"Added batch {i//batch_size + 1}: {len(batch_docs)} chunks ({total_added}/{len(processed_docs)} total)")
         
-        self.collection.add(
-            embeddings=embeddings,
-            documents=texts,
-            metadatas=metadatas,
-            ids=ids
-        )
-        
-        logger.info(f"Added {len(processed_docs)} document chunks to vector database")
-        return len(processed_docs)
+        logger.info(f"Successfully added {total_added} document chunks to vector database")
+        return total_added
     
     def _split_document(self, document: Dict[str, Any]) -> List[Dict[str, Any]]:
         content = document.get("content", "")
         metadata = document.get("metadata", {})
         doc_id = document.get("id", "unknown")
+        file_path = metadata.get("file_path", "")
         
         chunks = self.text_splitter.split_text(content)
         
         processed_chunks = []
         for i, chunk in enumerate(chunks):
-            chunk_id = f"{doc_id}_chunk_{i}"
+            # Create unique ID using file path hash to avoid duplicates
+            import hashlib
+            file_hash = hashlib.md5(file_path.encode()).hexdigest()[:8]
+            chunk_id = f"{doc_id}_{file_hash}_chunk_{i}"
+            
             chunk_metadata = {
                 **metadata,
                 "chunk_index": i,
@@ -203,20 +218,25 @@ class VectorDBService:
             template_id = template_data.get("id", template_path.stem)
             info = template_data.get("info", {})
             
-            # Create document
+            # Create document with ChromaDB-compatible metadata
+            author = info.get("author", [])
+            tags = info.get("tags", [])
+            reference = info.get("reference", [])
+            classification = info.get("classification", {})
+            
             document = {
                 "id": template_id,
                 "content": template_content,
                 "metadata": {
                     "template_id": template_id,
                     "name": info.get("name", ""),
-                    "author": info.get("author", []),
+                    "author": ", ".join(author) if isinstance(author, list) else str(author),
                     "severity": info.get("severity", ""),
                     "description": info.get("description", ""),
-                    "tags": info.get("tags", []),
-                    "reference": info.get("reference", []),
+                    "tags": ", ".join(tags) if isinstance(tags, list) else str(tags),
+                    "reference": ", ".join(reference) if isinstance(reference, list) else str(reference),
                     "file_path": str(template_path),
-                    "classification": info.get("classification", {}),
+                    "classification": str(classification) if classification else "",
                 }
             }
             

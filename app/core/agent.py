@@ -10,6 +10,7 @@ import yaml
 
 from langchain.schema import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 from app.core.rag_engine import RAGEngine
 from app.core.nuclei_runner import NucleiRunner
@@ -29,6 +30,7 @@ class NucleiAgent:
         self.rag_engine = RAGEngine(self.config)
         self.nuclei_runner = NucleiRunner(self.config.get("nuclei", {}))
         self.llm = self._initialize_llm()
+        self.model_name = self._get_model_name()
         self.system_prompt = self._load_system_prompt()
         self.user_prompt_template = self._load_user_prompt_template()
         
@@ -39,30 +41,50 @@ class NucleiAgent:
                 return yaml.safe_load(f)
         return {}
     
-    def _initialize_llm(self) -> ChatOpenAI:
+    def _initialize_llm(self):
         llm_config = self.config.get("llm", {})
+        provider = llm_config.get("provider", "openai")
         
-        # Load OpenAI API key from secrets
+        # Load API keys from secrets
         secrets_path = Path("config/secrets.yaml")
-        api_key = None
+        secrets = {}
         if secrets_path.exists():
             with open(secrets_path, 'r') as f:
                 secrets = yaml.safe_load(f)
-                api_key = secrets.get("openai_api_key") or secrets.get("openai", {}).get("api_key")
         
-        return ChatOpenAI(
-            model=llm_config.get("model", "gpt-4"),
-            temperature=llm_config.get("temperature", 0.7),
-            max_tokens=llm_config.get("max_tokens", 2000),
-            timeout=llm_config.get("timeout", 30),
-            openai_api_key=api_key
-        )
+        if provider == "gemini":
+            api_key = secrets.get("gemini_api_key") or secrets.get("gemini", {}).get("api_key")
+            return ChatGoogleGenerativeAI(
+                model=llm_config.get("model", "gemini-2.0-flash"),
+                temperature=llm_config.get("temperature", 0.7),
+                max_tokens=llm_config.get("max_tokens", 2000),
+                timeout=llm_config.get("timeout", 30),
+                google_api_key=api_key
+            )
+        else:  # Default to OpenAI
+            api_key = secrets.get("openai_api_key") or secrets.get("openai", {}).get("api_key")
+            return ChatOpenAI(
+                model=llm_config.get("model", "gpt-4"),
+                temperature=llm_config.get("temperature", 0.7),
+                max_tokens=llm_config.get("max_tokens", 2000),
+                timeout=llm_config.get("timeout", 30),
+                openai_api_key=api_key
+            )
     
     def _load_system_prompt(self) -> str:
         prompt_path = Path("templates/nuclei_prompts/system_prompt.txt")
         if prompt_path.exists():
             return prompt_path.read_text(encoding='utf-8')
         return "You are an expert Nuclei template generator."
+    
+    def _get_model_name(self) -> str:
+        """Get the model name from configuration"""
+        llm_config = self.config.get("llm", {})
+        provider = llm_config.get("provider", "openai")
+        if provider == "gemini":
+            return llm_config.get("model", "gemini-2.0-flash-exp")
+        else:
+            return llm_config.get("model", "gpt-4")
     
     def _load_user_prompt_template(self) -> str:
         template_path = Path("templates/nuclei_prompts/user_prompt_template.txt")
@@ -134,7 +156,7 @@ class NucleiAgent:
                 validation_result=validation_result,
                 retrieval_context=[doc.get("content", "")[:200] + "..." for doc in similar_templates[:3]],
                 generation_metadata={
-                    "model": self.llm.model_name,
+                    "model": self.model_name,
                     "similar_templates_count": len(similar_templates),
                     "generation_attempts": attempt + 1,
                     "request_severity": request.severity,
@@ -265,6 +287,6 @@ Please provide a corrected version of the template that addresses these validati
             "nuclei_version": nuclei_version,
             "rag_engine_initialized": self.rag_engine.initialized,
             "rag_collection_stats": rag_stats,
-            "llm_model": self.llm.model_name,
+            "llm_model": self.model_name,
             "config_loaded": bool(self.config)
         }

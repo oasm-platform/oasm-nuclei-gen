@@ -772,3 +772,279 @@
 2025-08-06 21:54:18,726 - app.core.nuclei_runner - ERROR - Error getting Nuclei version: 
 2025-08-06 21:54:18,727 - app.core.nuclei_runner - ERROR - Error getting Nuclei version: 
 2025-08-06 21:56:01,352 - app.main - INFO - Shutting down Nuclei AI Agent Template Generator
+2025-08-06 23:25:50,591 - app.main - INFO - Starting Nuclei AI Agent Template Generator
+2025-08-06 23:25:50,595 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-06 23:25:50,595 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2025-08-06 23:25:56,534 - app.services.vector_db - INFO - Loaded existing collection: nuclei_templates
+2025-08-06 23:25:56,534 - app.core.rag_engine - INFO - RAG Engine initialized successfully
+2025-08-06 23:25:56,536 - app.main - INFO - RAG engine initialized successfully
+2025-08-06 23:26:07,777 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-06 23:26:07,777 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2025-08-06 23:26:14,492 - app.api.v1.endpoints - INFO - Template generation request: stringstri...
+2025-08-06 23:26:14,493 - app.core.agent - INFO - Starting template generation for: stringstri...
+2025-08-06 23:26:14,537 - app.services.vector_db - INFO - Loaded existing collection: nuclei_templates
+2025-08-06 23:26:14,537 - app.core.rag_engine - INFO - RAG Engine initialized successfully
+2025-08-06 23:26:14,753 - app.core.rag_engine - INFO - Retrieved 0 similar templates for query: stringstri...
+2025-08-06 23:26:15,641 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 404 Not Found"
+2025-08-06 23:26:15,643 - app.core.agent - ERROR - Template generation attempt 1 failed: Error code: 404 - {'error': {'message': 'The model `gpt-4` does not exist or you do not have access to it.', 'type': 'invalid_request_error', 'param': None, 'code': 'model_not_found'}}
+2025-08-06 23:26:17,025 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 404 Not Found"
+2025-08-06 23:26:17,026 - app.core.agent - ERROR - Template generation attempt 2 failed: Error code: 404 - {'error': {'message': 'The model `gpt-4` does not exist or you do not have access to it.', 'type': 'invalid_request_error', 'param': None, 'code': 'model_not_found'}}
+2025-08-06 23:26:17,955 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 404 Not Found"
+2025-08-06 23:26:17,957 - app.core.agent - ERROR - Template generation attempt 3 failed: Error code: 404 - {'error': {'message': 'The model `gpt-4` does not exist or you do not have access to it.', 'type': 'invalid_request_error', 'param': None, 'code': 'model_not_found'}}
+2025-08-06 23:26:17,957 - app.core.agent - ERROR - Template generation failed: Error code: 404 - {'error': {'message': 'The model `gpt-4` does not exist or you do not have access to it.', 'type': 'invalid_request_error', 'param': None, 'code': 'model_not_found'}}
+2025-08-06 23:26:17,959 - app.api.v1.endpoints - WARNING - Template generation failed: ["Generation failed: Error code: 404 - {'error': {'message': 'The model `gpt-4` does not exist or you do not have access to it.', 'type': 'invalid_request_error', 'param': None, 'code': 'model_not_found'}}"]
+2025-08-06 23:28:02,142 - app.main - INFO - Shutting down Nuclei AI Agent Template Generator
+2025-08-06 23:28:16,780 - app.main - INFO - Starting Nuclei AI Agent Template Generator
+2025-08-06 23:28:16,783 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-06 23:28:16,783 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2025-08-06 23:28:23,217 - app.services.vector_db - INFO - Loaded existing collection: nuclei_templates
+2025-08-06 23:28:23,218 - app.core.rag_engine - INFO - RAG Engine initialized successfully
+2025-08-06 23:28:23,219 - app.main - INFO - RAG engine initialized successfully
+2025-08-06 23:28:39,502 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-06 23:28:39,503 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2025-08-06 23:28:45,564 - app.api.v1.endpoints - INFO - Template generation request: stringstri...
+2025-08-06 23:28:45,566 - app.core.agent - INFO - Starting template generation for: stringstri...
+2025-08-06 23:28:45,622 - app.services.vector_db - INFO - Loaded existing collection: nuclei_templates
+2025-08-06 23:28:45,624 - app.core.rag_engine - INFO - RAG Engine initialized successfully
+2025-08-06 23:28:46,117 - app.core.rag_engine - INFO - Retrieved 0 similar templates for query: stringstri...
+2025-08-06 23:28:46,885 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-08-06 23:28:46,886 - openai._base_client - INFO - Retrying request to /chat/completions in 0.416201 seconds
+2025-08-06 23:28:48,052 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-08-06 23:28:48,055 - openai._base_client - INFO - Retrying request to /chat/completions in 0.996667 seconds
+2025-08-06 23:28:49,839 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-08-06 23:28:49,840 - app.core.agent - ERROR - Template generation attempt 1 failed: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2025-08-06 23:28:50,381 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-08-06 23:28:50,383 - openai._base_client - INFO - Retrying request to /chat/completions in 0.443291 seconds
+2025-08-06 23:28:51,629 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-08-06 23:28:51,631 - openai._base_client - INFO - Retrying request to /chat/completions in 0.850331 seconds
+2025-08-06 23:28:52,837 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-08-06 23:28:52,840 - app.core.agent - ERROR - Template generation attempt 2 failed: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2025-08-06 23:28:53,147 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-08-06 23:28:53,149 - openai._base_client - INFO - Retrying request to /chat/completions in 0.498347 seconds
+2025-08-06 23:28:53,971 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-08-06 23:28:53,972 - openai._base_client - INFO - Retrying request to /chat/completions in 0.780372 seconds
+2025-08-06 23:28:55,066 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-08-06 23:28:55,069 - app.core.agent - ERROR - Template generation attempt 3 failed: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2025-08-06 23:28:55,069 - app.core.agent - ERROR - Template generation failed: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2025-08-06 23:28:55,070 - app.api.v1.endpoints - WARNING - Template generation failed: ["Generation failed: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}"]
+2025-08-07 10:22:29,914 - app.main - INFO - Starting Nuclei AI Agent Template Generator
+2025-08-07 10:22:29,919 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-07 10:22:29,919 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2025-08-07 10:22:38,123 - app.services.vector_db - INFO - Loaded existing collection: nuclei_templates
+2025-08-07 10:22:38,124 - app.core.rag_engine - INFO - RAG Engine initialized successfully
+2025-08-07 10:22:38,125 - app.main - INFO - RAG engine initialized successfully
+2025-08-07 10:25:33,856 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-07 10:25:33,856 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2025-08-07 10:25:41,394 - app.api.v1.endpoints - INFO - Template generation request: SQL Injection vulnerability found in login form...
+2025-08-07 10:25:41,394 - app.core.agent - INFO - Starting template generation for: SQL Injection vulnerability found in login form...
+2025-08-07 10:25:41,435 - app.services.vector_db - INFO - Loaded existing collection: nuclei_templates
+2025-08-07 10:25:41,436 - app.core.rag_engine - INFO - RAG Engine initialized successfully
+2025-08-07 10:25:41,927 - app.core.rag_engine - INFO - Retrieved 0 similar templates for query: SQL Injection vulnerability found in login form...
+2025-08-07 10:25:43,303 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-08-07 10:25:43,304 - openai._base_client - INFO - Retrying request to /chat/completions in 0.450468 seconds
+2025-08-07 10:25:45,508 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-08-07 10:25:45,510 - openai._base_client - INFO - Retrying request to /chat/completions in 0.988787 seconds
+2025-08-07 10:25:46,890 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-08-07 10:25:46,893 - app.core.agent - ERROR - Template generation attempt 1 failed: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2025-08-07 10:25:47,473 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-08-07 10:25:47,474 - openai._base_client - INFO - Retrying request to /chat/completions in 0.460413 seconds
+2025-08-07 10:25:49,647 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-08-07 10:25:49,648 - openai._base_client - INFO - Retrying request to /chat/completions in 0.890574 seconds
+2025-08-07 10:25:51,243 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-08-07 10:25:51,245 - app.core.agent - ERROR - Template generation attempt 2 failed: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2025-08-07 10:25:51,634 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-08-07 10:25:51,638 - openai._base_client - INFO - Retrying request to /chat/completions in 0.450413 seconds
+2025-08-07 10:25:53,435 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-08-07 10:25:53,435 - openai._base_client - INFO - Retrying request to /chat/completions in 0.871493 seconds
+2025-08-07 10:25:55,540 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2025-08-07 10:25:55,541 - app.core.agent - ERROR - Template generation attempt 3 failed: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2025-08-07 10:25:55,543 - app.core.agent - ERROR - Template generation failed: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+2025-08-07 10:25:55,543 - app.api.v1.endpoints - WARNING - Template generation failed: ["Generation failed: Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}"]
+2025-08-07 10:33:04,084 - app.main - INFO - Shutting down Nuclei AI Agent Template Generator
+2025-08-07 10:38:09,621 - app.main - INFO - Starting Nuclei AI Agent Template Generator
+2025-08-07 10:38:09,630 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-07 10:38:09,630 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2025-08-07 10:38:17,193 - app.services.vector_db - INFO - Loaded existing collection: nuclei_templates
+2025-08-07 10:38:17,193 - app.core.rag_engine - INFO - RAG Engine initialized successfully
+2025-08-07 10:38:17,193 - app.main - INFO - RAG engine initialized successfully
+2025-08-07 10:39:35,524 - app.main - INFO - Starting Nuclei AI Agent Template Generator
+2025-08-07 10:39:35,527 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-07 10:39:35,527 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2025-08-07 10:39:40,413 - app.services.vector_db - INFO - Loaded existing collection: nuclei_templates
+2025-08-07 10:39:40,413 - app.core.rag_engine - INFO - RAG Engine initialized successfully
+2025-08-07 10:39:40,414 - app.main - INFO - RAG engine initialized successfully
+2025-08-07 10:40:31,119 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-07 10:40:31,119 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2025-08-07 10:40:36,784 - app.api.v1.endpoints - INFO - Template generation request: SQL Injection vulnerability found in login form...
+2025-08-07 10:40:36,784 - app.core.agent - INFO - Starting template generation for: SQL Injection vulnerability found in login form...
+2025-08-07 10:40:36,825 - app.services.vector_db - INFO - Loaded existing collection: nuclei_templates
+2025-08-07 10:40:36,825 - app.core.rag_engine - INFO - RAG Engine initialized successfully
+2025-08-07 10:40:37,035 - app.core.rag_engine - INFO - Retrieved 0 similar templates for query: SQL Injection vulnerability found in login form...
+2025-08-07 10:40:44,312 - app.core.nuclei_runner - ERROR - Error running nuclei validation: 
+2025-08-07 10:40:44,312 - app.core.agent - WARNING - Generated template failed validation (attempt 1): ['Unexpected error during validation: ']
+2025-08-07 10:40:57,034 - app.core.nuclei_runner - ERROR - Error running nuclei validation: 
+2025-08-07 10:40:57,035 - app.core.agent - WARNING - Generated template failed validation (attempt 2): ['Unexpected error during validation: ']
+2025-08-07 10:41:09,296 - app.core.nuclei_runner - ERROR - Error running nuclei validation: 
+2025-08-07 10:41:09,296 - app.core.agent - WARNING - Generated template failed validation (attempt 3): ['Unexpected error during validation: ']
+2025-08-07 10:41:09,300 - app.core.agent - ERROR - Template generation failed: 'ChatGoogleGenerativeAI' object has no attribute 'model_name'
+2025-08-07 10:41:09,300 - app.api.v1.endpoints - WARNING - Template generation failed: ["Generation failed: 'ChatGoogleGenerativeAI' object has no attribute 'model_name'"]
+2025-08-07 10:41:56,950 - app.main - INFO - Shutting down Nuclei AI Agent Template Generator
+2025-08-07 10:42:06,566 - app.main - INFO - Starting Nuclei AI Agent Template Generator
+2025-08-07 10:42:06,570 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-07 10:42:06,571 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2025-08-07 10:42:12,913 - app.services.vector_db - INFO - Loaded existing collection: nuclei_templates
+2025-08-07 10:42:12,916 - app.core.rag_engine - INFO - RAG Engine initialized successfully
+2025-08-07 10:42:12,916 - app.main - INFO - RAG engine initialized successfully
+2025-08-07 10:42:12,935 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-07 10:42:12,935 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2025-08-07 10:42:17,034 - langchain_google_genai.chat_models - WARNING - Unexpected argument 'model_name' provided to ChatGoogleGenerativeAI. Did you mean: 'model'?
+2025-08-07 10:42:17,726 - app.main - INFO - Shutting down Nuclei AI Agent Template Generator
+2025-08-07 10:42:25,109 - app.main - INFO - Starting Nuclei AI Agent Template Generator
+2025-08-07 10:42:25,112 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-07 10:42:25,112 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2025-08-07 10:42:31,252 - app.services.vector_db - INFO - Loaded existing collection: nuclei_templates
+2025-08-07 10:42:31,252 - app.core.rag_engine - INFO - RAG Engine initialized successfully
+2025-08-07 10:42:31,252 - app.main - INFO - RAG engine initialized successfully
+2025-08-07 10:42:31,261 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-07 10:42:31,261 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2025-08-07 10:42:35,569 - langchain_google_genai.chat_models - WARNING - Unexpected argument 'model_name' provided to ChatGoogleGenerativeAI. Did you mean: 'model'?
+2025-08-07 10:43:04,242 - app.main - INFO - Shutting down Nuclei AI Agent Template Generator
+2025-08-07 10:43:12,006 - app.main - INFO - Starting Nuclei AI Agent Template Generator
+2025-08-07 10:43:12,010 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-07 10:43:12,010 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2025-08-07 10:43:20,985 - app.services.vector_db - INFO - Loaded existing collection: nuclei_templates
+2025-08-07 10:43:20,986 - app.core.rag_engine - INFO - RAG Engine initialized successfully
+2025-08-07 10:43:20,986 - app.main - INFO - RAG engine initialized successfully
+2025-08-07 10:43:21,003 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-07 10:43:21,006 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2025-08-07 10:43:25,864 - app.api.v1.endpoints - INFO - Template generation request: SQL Injection vulnerability found in login form...
+2025-08-07 10:43:25,864 - app.core.agent - INFO - Starting template generation for: SQL Injection vulnerability found in login form...
+2025-08-07 10:43:25,915 - app.services.vector_db - INFO - Loaded existing collection: nuclei_templates
+2025-08-07 10:43:25,916 - app.core.rag_engine - INFO - RAG Engine initialized successfully
+2025-08-07 10:43:26,298 - app.core.rag_engine - INFO - Retrieved 0 similar templates for query: SQL Injection vulnerability found in login form...
+2025-08-07 10:43:32,419 - app.core.nuclei_runner - ERROR - Error running nuclei validation: 
+2025-08-07 10:43:32,421 - app.core.agent - WARNING - Generated template failed validation (attempt 1): ['Unexpected error during validation: ']
+2025-08-07 10:43:45,518 - app.core.nuclei_runner - ERROR - Error running nuclei validation: 
+2025-08-07 10:43:45,519 - app.core.agent - WARNING - Generated template failed validation (attempt 2): ['Unexpected error during validation: ']
+2025-08-07 10:44:00,590 - app.core.nuclei_runner - ERROR - Error running nuclei validation: 
+2025-08-07 10:44:00,591 - app.core.agent - WARNING - Generated template failed validation (attempt 3): ['Unexpected error during validation: ']
+2025-08-07 10:44:00,598 - app.core.agent - ERROR - Template generation failed: 'ChatGoogleGenerativeAI' object has no attribute 'model_name'
+2025-08-07 10:44:00,608 - app.api.v1.endpoints - WARNING - Template generation failed: ["Generation failed: 'ChatGoogleGenerativeAI' object has no attribute 'model_name'"]
+2025-08-07 10:44:49,637 - app.main - INFO - Shutting down Nuclei AI Agent Template Generator
+2025-08-07 10:44:59,171 - app.main - INFO - Starting Nuclei AI Agent Template Generator
+2025-08-07 10:44:59,175 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-07 10:44:59,175 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2025-08-07 10:45:04,426 - app.services.vector_db - INFO - Loaded existing collection: nuclei_templates
+2025-08-07 10:45:04,427 - app.core.rag_engine - INFO - RAG Engine initialized successfully
+2025-08-07 10:45:04,427 - app.main - INFO - RAG engine initialized successfully
+2025-08-07 10:45:08,909 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-07 10:45:08,910 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2025-08-07 10:45:13,141 - app.api.v1.endpoints - INFO - Template generation request: SQL Injection vulnerability found in login form...
+2025-08-07 10:45:13,143 - app.core.agent - INFO - Starting template generation for: SQL Injection vulnerability found in login form...
+2025-08-07 10:45:13,172 - app.services.vector_db - INFO - Loaded existing collection: nuclei_templates
+2025-08-07 10:45:13,173 - app.core.rag_engine - INFO - RAG Engine initialized successfully
+2025-08-07 10:45:13,526 - app.core.rag_engine - INFO - Retrieved 0 similar templates for query: SQL Injection vulnerability found in login form...
+2025-08-07 10:45:20,475 - app.core.nuclei_runner - ERROR - Error running nuclei validation: 
+2025-08-07 10:45:20,476 - app.core.agent - WARNING - Generated template failed validation (attempt 1): ['Unexpected error during validation: ']
+2025-08-07 10:45:30,603 - app.core.nuclei_runner - ERROR - Error running nuclei validation: 
+2025-08-07 10:45:30,604 - app.core.agent - WARNING - Generated template failed validation (attempt 2): ['Unexpected error during validation: ']
+2025-08-07 10:45:45,737 - app.core.nuclei_runner - ERROR - Error running nuclei validation: 
+2025-08-07 10:45:45,737 - app.core.agent - WARNING - Generated template failed validation (attempt 3): ['Unexpected error during validation: ']
+2025-08-07 10:45:45,741 - app.core.agent - ERROR - Template generation failed: 'ChatGoogleGenerativeAI' object has no attribute 'model_name'
+2025-08-07 10:45:45,741 - app.api.v1.endpoints - WARNING - Template generation failed: ["Generation failed: 'ChatGoogleGenerativeAI' object has no attribute 'model_name'"]
+2025-08-07 10:46:42,040 - app.main - INFO - Shutting down Nuclei AI Agent Template Generator
+2025-08-07 10:47:05,977 - app.main - INFO - Starting Nuclei AI Agent Template Generator
+2025-08-07 10:47:05,980 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-07 10:47:05,980 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2025-08-07 10:47:11,325 - app.services.vector_db - INFO - Loaded existing collection: nuclei_templates
+2025-08-07 10:47:11,325 - app.core.rag_engine - INFO - RAG Engine initialized successfully
+2025-08-07 10:47:11,325 - app.main - INFO - RAG engine initialized successfully
+2025-08-07 10:47:54,876 - app.main - INFO - Shutting down Nuclei AI Agent Template Generator
+2025-08-07 10:48:04,050 - app.main - INFO - Starting Nuclei AI Agent Template Generator
+2025-08-07 10:48:04,052 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-07 10:48:04,052 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2025-08-07 10:48:10,406 - app.services.vector_db - INFO - Loaded existing collection: nuclei_templates
+2025-08-07 10:48:10,406 - app.core.rag_engine - INFO - RAG Engine initialized successfully
+2025-08-07 10:48:10,406 - app.main - INFO - RAG engine initialized successfully
+2025-08-07 10:48:17,850 - app.main - INFO - Starting Nuclei AI Agent Template Generator
+2025-08-07 10:48:17,851 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-07 10:48:17,851 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2025-08-07 10:48:23,053 - app.services.vector_db - INFO - Loaded existing collection: nuclei_templates
+2025-08-07 10:48:23,053 - app.core.rag_engine - INFO - RAG Engine initialized successfully
+2025-08-07 10:48:23,053 - app.main - INFO - RAG engine initialized successfully
+2025-08-07 10:49:06,011 - app.main - INFO - Shutting down Nuclei AI Agent Template Generator
+2025-08-07 10:49:21,076 - app.main - INFO - Starting Nuclei AI Agent Template Generator
+2025-08-07 10:49:21,080 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-07 10:49:21,080 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2025-08-07 10:49:26,419 - app.services.vector_db - INFO - Loaded existing collection: nuclei_templates
+2025-08-07 10:49:26,419 - app.core.rag_engine - INFO - RAG Engine initialized successfully
+2025-08-07 10:49:26,419 - app.main - INFO - RAG engine initialized successfully
+2025-08-07 10:49:37,718 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-07 10:49:37,718 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2025-08-07 10:49:42,533 - app.api.v1.endpoints - INFO - Template generation request: SQL Injection vulnerability found in login form...
+2025-08-07 10:49:42,534 - app.core.agent - INFO - Starting template generation for: SQL Injection vulnerability found in login form...
+2025-08-07 10:49:42,576 - app.services.vector_db - INFO - Loaded existing collection: nuclei_templates
+2025-08-07 10:49:42,576 - app.core.rag_engine - INFO - RAG Engine initialized successfully
+2025-08-07 10:49:42,875 - app.core.rag_engine - INFO - Retrieved 0 similar templates for query: SQL Injection vulnerability found in login form...
+2025-08-07 10:49:47,702 - app.core.agent - INFO - Template generation completed successfully: login-sqli-attempt
+2025-08-07 10:49:47,703 - app.api.v1.endpoints - INFO - Template generated successfully: login-sqli-attempt
+2025-08-07 11:01:20,058 - app.api.v1.endpoints - INFO - Template generation request: SQL Injection vulnerability found in login form...
+2025-08-07 11:01:20,058 - app.core.agent - INFO - Starting template generation for: SQL Injection vulnerability found in login form...
+2025-08-07 11:01:20,101 - app.core.rag_engine - INFO - Retrieved 0 similar templates for query: SQL Injection vulnerability found in login form...
+2025-08-07 11:01:28,400 - app.core.agent - INFO - Template generation completed successfully: soundcloud-login-sqli
+2025-08-07 11:01:28,400 - app.api.v1.endpoints - INFO - Template generated successfully: soundcloud-login-sqli
+2025-08-07 11:01:57,970 - app.api.v1.endpoints - INFO - Template validation request received
+2025-08-07 11:01:57,972 - app.core.nuclei_runner - ERROR - Error running nuclei validation: 
+Traceback (most recent call last):
+  File "D:\oasm-gen-template-nuclei\app\core\nuclei_runner.py", line 52, in _run_validation
+    process = await asyncio.create_subprocess_exec(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python312\Lib\asyncio\subprocess.py", line 224, in create_subprocess_exec
+    transport, protocol = await loop.subprocess_exec(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python312\Lib\asyncio\base_events.py", line 1756, in subprocess_exec
+    transport = await self._make_subprocess_transport(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python312\Lib\asyncio\base_events.py", line 528, in _make_subprocess_transport
+    raise NotImplementedError
+NotImplementedError
+2025-08-07 11:01:57,984 - app.api.v1.endpoints - INFO - Template validation completed: FAILED
+2025-08-07 11:05:19,764 - app.main - INFO - Shutting down Nuclei AI Agent Template Generator
+2025-08-07 11:05:29,043 - app.main - INFO - Starting Nuclei AI Agent Template Generator
+2025-08-07 11:05:29,047 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-07 11:05:29,047 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2025-08-07 11:05:35,261 - app.services.vector_db - INFO - Loaded existing collection: nuclei_templates
+2025-08-07 11:05:35,261 - app.core.rag_engine - INFO - RAG Engine initialized successfully
+2025-08-07 11:05:35,261 - app.main - INFO - RAG engine initialized successfully
+2025-08-07 11:05:36,887 - app.main - INFO - Shutting down Nuclei AI Agent Template Generator
+2025-08-07 11:05:44,224 - app.main - INFO - Starting Nuclei AI Agent Template Generator
+2025-08-07 11:05:44,227 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-07 11:05:44,227 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2025-08-07 11:05:49,009 - app.services.vector_db - INFO - Loaded existing collection: nuclei_templates
+2025-08-07 11:05:49,009 - app.core.rag_engine - INFO - RAG Engine initialized successfully
+2025-08-07 11:05:49,009 - app.main - INFO - RAG engine initialized successfully
+2025-08-07 11:05:56,374 - app.main - INFO - Starting Nuclei AI Agent Template Generator
+2025-08-07 11:05:56,378 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-07 11:05:56,378 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2025-08-07 11:06:02,043 - app.services.vector_db - INFO - Loaded existing collection: nuclei_templates
+2025-08-07 11:06:02,043 - app.core.rag_engine - INFO - RAG Engine initialized successfully
+2025-08-07 11:06:02,043 - app.main - INFO - RAG engine initialized successfully
+2025-08-07 11:06:09,412 - app.main - INFO - Starting Nuclei AI Agent Template Generator
+2025-08-07 11:06:09,415 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-07 11:06:09,415 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2025-08-07 11:06:16,873 - app.services.vector_db - INFO - Loaded existing collection: nuclei_templates
+2025-08-07 11:06:16,873 - app.core.rag_engine - INFO - RAG Engine initialized successfully
+2025-08-07 11:06:16,873 - app.main - INFO - RAG engine initialized successfully
+2025-08-07 11:06:46,813 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-07 11:06:46,813 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2025-08-07 11:06:51,609 - app.api.v1.endpoints - INFO - Template validation request received
+2025-08-07 11:07:21,664 - app.core.nuclei_runner - INFO - Template temp_template validation: FAILED
+2025-08-07 11:07:21,664 - app.core.nuclei_runner - WARNING - Validation errors for temp_template: ['Template validation failed with return code 1', 'Stderr: Nuclei validation timed out after 30 seconds']
+2025-08-07 11:07:21,668 - app.api.v1.endpoints - INFO - Template validation completed: FAILED
+2025-08-07 11:11:44,587 - app.main - INFO - Shutting down Nuclei AI Agent Template Generator
+2025-08-07 11:11:54,291 - app.main - INFO - Starting Nuclei AI Agent Template Generator
+2025-08-07 11:11:54,296 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-08-07 11:11:54,296 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2025-08-07 11:11:59,502 - app.services.vector_db - INFO - Loaded existing collection: nuclei_templates
+2025-08-07 11:11:59,502 - app.core.rag_engine - INFO - RAG Engine initialized successfully
+2025-08-07 11:11:59,502 - app.main - INFO - RAG engine initialized successfully

@@ -111,7 +111,7 @@ setup_config() {
     
     if [ ! -f "$PROJECT_ROOT/config/secrets.yaml" ]; then
         log_warn "config/secrets.yaml not found. You need to configure API keys."
-        echo "Please copy config/secrets.yaml.example to config/secrets.yaml and fill in your API keys."
+        echo "Please copy config/secrets.example.yaml to config/secrets.yaml and fill in your API keys."
     fi
 }
 

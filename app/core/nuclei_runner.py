@@ -3,10 +3,12 @@ Nuclei runner wrapper for template validation and execution
 """
 import asyncio
 import logging
+import subprocess
 import tempfile
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 import yaml
+import platform
 
 from app.models.template import ValidationResult
 
@@ -46,47 +48,61 @@ class NucleiRunner:
     async def _run_validation(self, template_path: str, template_id: str) -> ValidationResult:
         cmd = [self.nuclei_binary] + self.validate_args + ["-t", template_path]
         
+        logger.debug(f"Running nuclei validation command: {' '.join(cmd)}")
+        
         try:
-            process = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-                cwd=Path.cwd()
+            # Use asyncio.to_thread to run subprocess in a thread pool
+            result = await asyncio.to_thread(
+                self._run_subprocess,
+                cmd,
+                self.timeout
             )
             
-            try:
-                stdout, stderr = await asyncio.wait_for(
-                    process.communicate(),
-                    timeout=self.timeout
-                )
-            except asyncio.TimeoutError:
-                process.kill()
-                return ValidationResult(
-                    is_valid=False,
-                    errors=[f"Nuclei validation timed out after {self.timeout} seconds"],
-                    warnings=[]
-                )
+            stdout_text, stderr_text, return_code = result
+            
+            logger.debug(f"Nuclei validation stdout: {stdout_text}")
+            logger.debug(f"Nuclei validation stderr: {stderr_text}")
+            logger.debug(f"Nuclei validation return code: {return_code}")
             
             return self._parse_validation_output(
-                stdout.decode(),
-                stderr.decode(),
-                process.returncode,
+                stdout_text,
+                stderr_text,
+                return_code,
                 template_id
             )
             
         except FileNotFoundError:
+            logger.error(f"Nuclei binary not found: {self.nuclei_binary}")
             return ValidationResult(
                 is_valid=False,
                 errors=[f"Nuclei binary not found: {self.nuclei_binary}"],
                 warnings=[]
             )
         except Exception as e:
-            logger.error(f"Error running nuclei validation: {e}")
+            logger.error(f"Error running nuclei validation: {e}", exc_info=True)
             return ValidationResult(
                 is_valid=False,
                 errors=[f"Unexpected error during validation: {str(e)}"],
                 warnings=[]
             )
+    
+    def _run_subprocess(self, cmd: List[str], timeout: int) -> tuple:
+        """Run subprocess synchronously in a thread"""
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                cwd=Path.cwd()
+            )
+            return result.stdout.strip(), result.stderr.strip(), result.returncode
+        except subprocess.TimeoutExpired:
+            return "", f"Nuclei validation timed out after {timeout} seconds", 1
+        except FileNotFoundError:
+            raise
+        except Exception as e:
+            return "", f"Subprocess error: {str(e)}", 1
     
     def _parse_validation_output(
         self, 
@@ -131,6 +147,14 @@ class NucleiRunner:
         # If no specific errors found but return code is non-zero, add generic error
         if not is_valid and not errors and return_code != 0:
             errors.append(f"Template validation failed with return code {return_code}")
+            if stdout:
+                errors.append(f"Stdout: {stdout}")
+            if stderr:
+                errors.append(f"Stderr: {stderr}")
+        
+        # If template appears to be valid based on return code but we have no output, it might still be valid
+        if return_code == 0 and not errors:
+            is_valid = True
         
         logger.info(f"Template {template_id} validation: {'PASSED' if is_valid else 'FAILED'}")
         if errors:
@@ -157,18 +181,25 @@ class NucleiRunner:
     
     async def get_nuclei_version(self) -> Optional[str]:
         try:
-            process = await asyncio.create_subprocess_exec(
-                self.nuclei_binary, "-version",
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
+            result = await asyncio.to_thread(
+                self._get_version_subprocess
             )
-            
-            stdout, stderr = await asyncio.wait_for(
-                process.communicate(),
+            return result
+        except Exception as e:
+            logger.error(f"Error getting Nuclei version: {e}")
+            return None
+    
+    def _get_version_subprocess(self) -> Optional[str]:
+        """Get nuclei version synchronously"""
+        try:
+            result = subprocess.run(
+                [self.nuclei_binary, "-version"],
+                capture_output=True,
+                text=True,
                 timeout=10
             )
             
-            version_output = stdout.decode() + stderr.decode()
+            version_output = result.stdout + result.stderr
             for line in version_output.split('\n'):
                 if 'nuclei' in line.lower() and any(char.isdigit() for char in line):
                     return line.strip()
@@ -176,7 +207,7 @@ class NucleiRunner:
             return version_output.strip() if version_output.strip() else None
             
         except Exception as e:
-            logger.error(f"Error getting Nuclei version: {e}")
+            logger.error(f"Error in version subprocess: {e}")
             return None
     
     async def check_nuclei_available(self) -> bool:
@@ -193,23 +224,34 @@ class NucleiRunner:
         cmd = [self.nuclei_binary, "-t", template_path, "-target", target] + additional_args
         
         try:
-            process = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
+            result = await asyncio.to_thread(
+                self._run_template_subprocess,
+                cmd,
+                self.timeout * 2  # Allow more time for actual execution
             )
-            
-            stdout, stderr = await asyncio.wait_for(
-                process.communicate(),
-                timeout=self.timeout * 2  # Allow more time for actual execution
-            )
-            
-            return (
-                process.returncode == 0,
-                stdout.decode(),
-                stderr.decode()
-            )
+            return result
             
         except Exception as e:
             logger.error(f"Error running template: {e}")
+            return False, "", str(e)
+    
+    def _run_template_subprocess(self, cmd: List[str], timeout: int) -> Tuple[bool, str, str]:
+        """Run template execution subprocess synchronously"""
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=timeout
+            )
+            
+            return (
+                result.returncode == 0,
+                result.stdout,
+                result.stderr
+            )
+            
+        except subprocess.TimeoutExpired:
+            return False, "", f"Template execution timed out after {timeout} seconds"
+        except Exception as e:
             return False, "", str(e)
