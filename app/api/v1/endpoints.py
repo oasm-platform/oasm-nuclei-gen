@@ -37,6 +37,9 @@ async def get_templates_by_severity(
     max_results: int = 10,
     agent: NucleiAgent = Depends(get_nuclei_agent)
 ) -> Dict[str, Any]:
+    """
+    Get templates by severity
+    """
     try:
         if not agent.rag_engine.initialized:
             await agent.rag_engine.initialize()
@@ -66,6 +69,9 @@ async def get_templates_by_severity(
 async def get_agent_status(
     agent: NucleiAgent = Depends(get_nuclei_agent)
 ) -> Dict[str, Any]:
+    """
+    Get agent status
+    """
     try:
         status = await agent.get_agent_status()
         return {
@@ -85,6 +91,9 @@ async def get_agent_status(
 async def get_rag_stats(
     agent: NucleiAgent = Depends(get_nuclei_agent)
 ) -> Dict[str, Any]:
+    """
+    Get RAG stats
+    """
     try:
         if not agent.rag_engine.initialized:
             await agent.rag_engine.initialize()
@@ -105,6 +114,9 @@ async def generate_template(
     request_data: TemplateGenerationRequest,
     agent: NucleiAgent = Depends(get_nuclei_agent)
 ) -> TemplateGenerationResponse:
+    """
+    Generate template
+    """
     try:
         logger.info(f"Template generation request: {request_data.vulnerability_description[:100]}...")
         
@@ -133,6 +145,9 @@ async def validate_template(
     request_data: TemplateValidationRequest,
     agent: NucleiAgent = Depends(get_nuclei_agent)
 ) -> TemplateValidationResponse:
+    """
+    Validate template
+    """
     try:
         logger.info("Template validation request received")
         
@@ -180,6 +195,9 @@ async def search_templates(
     request_data: RAGSearchRequest,
     agent: NucleiAgent = Depends(get_nuclei_agent)
 ) -> RAGSearchResponse:
+    """
+    Search templates
+    """
     try:
         logger.info(f"Template search request: {request_data.query}")
         
@@ -219,6 +237,9 @@ async def search_templates(
 async def reload_templates(
     agent: NucleiAgent = Depends(get_nuclei_agent)
 ) -> Dict[str, Any]:
+    """
+    Reload templates
+    """
     try:
         logger.info("Template reload request received")
         
@@ -249,6 +270,9 @@ async def get_templates_by_tags(
     max_results: int = 10,
     agent: NucleiAgent = Depends(get_nuclei_agent)
 ) -> Dict[str, Any]:
+    """
+    Get templates by tags
+    """
     try:
         if not agent.rag_engine.initialized:
             await agent.rag_engine.initialize()
@@ -279,6 +303,9 @@ async def get_templates_by_tags(
 async def update_rag_data(
     agent: NucleiAgent = Depends(get_nuclei_agent)
 ) -> UpdateRAGDataResponse:
+    """
+    Update RAG data
+    """
     try:
         logger.info("RAG data update request received")
         
@@ -324,10 +351,14 @@ async def update_rag_data(
         )
 
 
+
 @router.delete("/rag_collection")
 async def clear_rag_collection(
     agent: NucleiAgent = Depends(get_nuclei_agent)
 ) -> Dict[str, Any]:
+    """
+    Delete all templates from the RAG collection
+    """
     try:
         logger.info("Collection clear request received")
         
