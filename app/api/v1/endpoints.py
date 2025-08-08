@@ -15,6 +15,8 @@ from app.models.template import (
     TemplateValidationResponse,
     RAGSearchRequest,
     RAGSearchResponse,
+    UpdateRAGDataRequest,
+    UpdateRAGDataResponse,
     ErrorResponse
 )
 
@@ -27,6 +29,75 @@ def get_nuclei_agent(request: Request) -> NucleiAgent:
     if not hasattr(request.app.state, 'nuclei_agent'):
         request.app.state.nuclei_agent = NucleiAgent()
     return request.app.state.nuclei_agent
+
+
+@router.get("/templates/severity/{severity}")
+async def get_templates_by_severity(
+    severity: str,
+    max_results: int = 10,
+    agent: NucleiAgent = Depends(get_nuclei_agent)
+) -> Dict[str, Any]:
+    try:
+        if not agent.rag_engine.initialized:
+            await agent.rag_engine.initialize()
+        
+        templates = await agent.rag_engine.get_templates_by_severity(
+            severity=severity,
+            max_results=max_results
+        )
+        
+        return {
+            "severity": severity,
+            "templates": templates,
+            "total_results": len(templates)
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting templates by severity: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=ErrorResponse(
+                error="Internal server error during template search",
+                details={"exception": str(e)}
+            ).model_dump()
+        )
+
+@router.get("/agent_status")
+async def get_agent_status(
+    agent: NucleiAgent = Depends(get_nuclei_agent)
+) -> Dict[str, Any]:
+    try:
+        status = await agent.get_agent_status()
+        return {
+            "status": "healthy" if status["nuclei_available"] else "degraded",
+            "details": status
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting agent status: {e}")
+        return {
+            "status": "error",
+            "error": str(e)
+        }
+
+
+@router.get("/rag_stats")
+async def get_rag_stats(
+    agent: NucleiAgent = Depends(get_nuclei_agent)
+) -> Dict[str, Any]:
+    try:
+        if not agent.rag_engine.initialized:
+            await agent.rag_engine.initialize()
+        
+        stats = await agent.rag_engine.get_collection_stats()
+        return stats
+        
+    except Exception as e:
+        logger.error(f"Error getting RAG stats: {e}")
+        return {
+            "error": str(e)
+        }
+
 
 
 @router.post("/generate_template", response_model=TemplateGenerationResponse)
@@ -143,68 +214,6 @@ async def search_templates(
         )
 
 
-@router.get("/agent_status")
-async def get_agent_status(
-    agent: NucleiAgent = Depends(get_nuclei_agent)
-) -> Dict[str, Any]:
-    try:
-        status = await agent.get_agent_status()
-        return {
-            "status": "healthy" if status["nuclei_available"] else "degraded",
-            "details": status
-        }
-        
-    except Exception as e:
-        logger.error(f"Error getting agent status: {e}")
-        return {
-            "status": "error",
-            "error": str(e)
-        }
-
-
-@router.get("/rag_stats")
-async def get_rag_stats(
-    agent: NucleiAgent = Depends(get_nuclei_agent)
-) -> Dict[str, Any]:
-    try:
-        if not agent.rag_engine.initialized:
-            await agent.rag_engine.initialize()
-        
-        stats = await agent.rag_engine.get_collection_stats()
-        return stats
-        
-    except Exception as e:
-        logger.error(f"Error getting RAG stats: {e}")
-        return {
-            "error": str(e)
-        }
-
-
-@router.delete("/rag_collection")
-async def clear_rag_collection(
-    agent: NucleiAgent = Depends(get_nuclei_agent)
-) -> Dict[str, Any]:
-    try:
-        logger.info("Collection clear request received")
-        
-        if not agent.rag_engine.initialized:
-            await agent.rag_engine.initialize()
-        
-        result = await agent.rag_engine.vector_db.clear_collection()
-        
-        if result.get("status") == "success":
-            logger.info(f"Collection cleared successfully: {result.get('collection_name')}")
-        else:
-            logger.error(f"Failed to clear collection: {result.get('error')}")
-        
-        return result
-        
-    except Exception as e:
-        logger.error(f"Error clearing collection: {e}")
-        return {
-            "error": f"Internal server error during collection clear: {str(e)}",
-            "status": "failed"
-        }
 
 @router.post("/reload_templates")
 async def reload_templates(
@@ -232,36 +241,6 @@ async def reload_templates(
         )
 
 
-@router.get("/templates/severity/{severity}")
-async def get_templates_by_severity(
-    severity: str,
-    max_results: int = 10,
-    agent: NucleiAgent = Depends(get_nuclei_agent)
-) -> Dict[str, Any]:
-    try:
-        if not agent.rag_engine.initialized:
-            await agent.rag_engine.initialize()
-        
-        templates = await agent.rag_engine.get_templates_by_severity(
-            severity=severity,
-            max_results=max_results
-        )
-        
-        return {
-            "severity": severity,
-            "templates": templates,
-            "total_results": len(templates)
-        }
-        
-    except Exception as e:
-        logger.error(f"Error getting templates by severity: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=ErrorResponse(
-                error="Internal server error during template search",
-                details={"exception": str(e)}
-            ).model_dump()
-        )
 
 
 @router.post("/templates/tags")
@@ -294,3 +273,79 @@ async def get_templates_by_tags(
                 details={"exception": str(e)}
             ).model_dump()
         )
+
+
+@router.put("/update_rag_data", response_model=UpdateRAGDataResponse)
+async def update_rag_data(
+    agent: NucleiAgent = Depends(get_nuclei_agent)
+) -> UpdateRAGDataResponse:
+    try:
+        logger.info("RAG data update request received")
+        
+        # Initialize RAG engine if needed
+        if not agent.rag_engine.initialized:
+            await agent.rag_engine.initialize()
+        
+        # Perform the RAG data update
+        result = await agent.rag_engine.vector_db.update_rag_data(
+            rag_data_path="rag_data"
+        )
+        
+        # Create response based on result
+        response = UpdateRAGDataResponse(
+            success=result["status"] in ["success", "partial_failure"],
+            message=result["message"],
+            templates_cleared=result.get("templates_cleared", 0),
+            templates_downloaded=result.get("templates_downloaded", 0),
+            templates_loaded=result.get("templates_loaded", 0),
+            metadata={
+                "status": result["status"],
+                "steps": result.get("steps", []),
+            }
+        )
+        
+        if result["status"] == "success":
+            logger.info(f"RAG data update completed successfully: {result['templates_loaded']} templates loaded")
+        elif result["status"] == "partial_failure":
+            logger.warning(f"RAG data update completed with warnings: {result['message']}")
+        else:
+            logger.error(f"RAG data update failed: {result['message']}")
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"Error in update_rag_data endpoint: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=ErrorResponse(
+                error="Internal server error during RAG data update",
+                details={"exception": str(e)}
+            ).model_dump()
+        )
+
+
+@router.delete("/rag_collection")
+async def clear_rag_collection(
+    agent: NucleiAgent = Depends(get_nuclei_agent)
+) -> Dict[str, Any]:
+    try:
+        logger.info("Collection clear request received")
+        
+        if not agent.rag_engine.initialized:
+            await agent.rag_engine.initialize()
+        
+        result = await agent.rag_engine.vector_db.clear_collection()
+        
+        if result.get("status") == "success":
+            logger.info(f"Collection cleared successfully: {result.get('collection_name')}")
+        else:
+            logger.error(f"Failed to clear collection: {result.get('error')}")
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error clearing collection: {e}")
+        return {
+            "error": f"Internal server error during collection clear: {str(e)}",
+            "status": "failed"
+        }

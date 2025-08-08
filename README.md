@@ -48,7 +48,7 @@ nuclei-ai-agent/
 │       ├── cve-2023-1234.yaml     # Template CVE
 │       └── exposed-database.yaml  # Template Exposed Database
 ├── scripts/
-│   ├── ingest_data.py             # Load data into vector DB
+│   └── (deprecated)                # Scripts moved to API endpoints
 ├── config/
 │   ├── config.yaml                # Global configuration
 │   └── secrets.yaml               # API keys (sensitive data)
@@ -116,11 +116,13 @@ docker-compose ps
 ### 4. Load Templates
 
 ```bash
-# Download sample templates (optional)
-git clone https://github.com/projectdiscovery/nuclei-templates.git rag_data/nuclei_templates
+# Use the new API endpoint to update RAG data (recommended)
+curl -X POST "http://localhost:8000/api/v1/update_rag_data" \
+  -H "Content-Type: application/json" \
+  -d '{"force_update": true}'
 
-# Load templates into ChromaDB
-docker-compose exec nuclei-agent python scripts/ingest_data.py
+# Or manually download templates (optional)
+# git clone https://github.com/projectdiscovery/nuclei-templates.git rag_data/nuclei_templates
 ```
 
 ### 5. Test API
@@ -186,11 +188,13 @@ vector_db:
 ### Step 5: Initialize RAG data
 
 ```bash
-# Download nuclei templates
-git clone https://github.com/projectdiscovery/nuclei-templates.git rag_data/nuclei_templates
+# Use the new API endpoint to update RAG data (recommended)
+curl -X POST "http://localhost:8000/api/v1/update_rag_data" \
+  -H "Content-Type: application/json" \
+  -d '{"force_update": true}'
 
-# Load data into vector database
-python scripts/ingest_data.py
+# Or manually:
+# git clone https://github.com/projectdiscovery/nuclei-templates.git rag_data/nuclei_templates
 ```
 
 ### Step 6: Run the application
@@ -234,6 +238,56 @@ POST /api/v1/validate_template
 }
 ```
 
+#### 3. Update RAG Data (New)
+
+```bash
+POST /api/v1/update_rag_data
+
+{
+  "vector_db": {
+    "collection_name": "nuclei_templates",
+    "embedding_model": "all-MiniLM-L6-v2"
+  },
+  "force_update": true
+}
+```
+
+This endpoint replaces the old `ingest_data.py` script and provides:
+- Automatic clearing of existing RAG data
+- Download of latest Nuclei templates from GitHub
+- Loading templates into the vector database
+- Configuration updates via API
+
+#### 4. Clear RAG Collection
+
+```bash
+DELETE /api/v1/rag_collection
+```
+
+#### 5. Reload Templates
+
+```bash
+POST /api/v1/reload_templates
+```
+
+#### 6. Get RAG Statistics
+
+```bash
+GET /api/v1/rag_stats
+```
+
+#### 7. Search Templates
+
+```bash
+POST /api/v1/search_templates
+
+{
+  "query": "sql injection",
+  "max_results": 5,
+  "similarity_threshold": 0.7
+}
+```
+
 ### Python Usage Example
 
 ```python
@@ -251,6 +305,13 @@ response = requests.post('http://localhost:8000/api/v1/generate_template', json=
 
 template = response.json()
 print(template['generated_template'])
+
+# Update RAG data with latest templates
+update_response = requests.post('http://localhost:8000/api/v1/update_rag_data', json={
+    "force_update": True
+})
+
+print(f"Templates loaded: {update_response.json()['templates_loaded']}")
 ```
 
 ### Command Line Interface

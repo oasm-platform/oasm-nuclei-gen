@@ -128,6 +128,24 @@ class RAGSearchResponse(BaseModel):
 
 
 
+class UpdateRAGDataRequest(BaseModel):
+    vector_db: Optional[Dict[str, Any]] = Field(None, description="Vector DB configuration")
+    llm: Optional[Dict[str, Any]] = Field(None, description="LLM configuration")
+    nuclei: Optional[Dict[str, Any]] = Field(None, description="Nuclei configuration")
+    rag: Optional[Dict[str, Any]] = Field(None, description="RAG configuration")
+    force_update: bool = Field(default=False, description="Force update even if templates exist")
+
+
+class UpdateRAGDataResponse(BaseModel):
+    success: bool = Field(..., description="Update success status")
+    message: str = Field(..., description="Update result message")
+    templates_cleared: int = Field(default=0, description="Number of templates cleared")
+    templates_downloaded: int = Field(default=0, description="Number of templates downloaded")
+    templates_loaded: int = Field(default=0, description="Number of templates loaded to database")
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    metadata: Dict[str, Any] = Field(default={}, description="Additional metadata")
+
+
 class ErrorResponse(BaseModel):
     error: str = Field(..., description="Error message")
     details: Optional[Dict[str, Any]] = Field(None, description="Error details")
