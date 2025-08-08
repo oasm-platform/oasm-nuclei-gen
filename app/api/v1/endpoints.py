@@ -180,6 +180,32 @@ async def get_rag_stats(
         }
 
 
+@router.delete("/rag_collection")
+async def clear_rag_collection(
+    agent: NucleiAgent = Depends(get_nuclei_agent)
+) -> Dict[str, Any]:
+    try:
+        logger.info("Collection clear request received")
+        
+        if not agent.rag_engine.initialized:
+            await agent.rag_engine.initialize()
+        
+        result = await agent.rag_engine.vector_db.clear_collection()
+        
+        if result.get("status") == "success":
+            logger.info(f"Collection cleared successfully: {result.get('collection_name')}")
+        else:
+            logger.error(f"Failed to clear collection: {result.get('error')}")
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error clearing collection: {e}")
+        return {
+            "error": f"Internal server error during collection clear: {str(e)}",
+            "status": "failed"
+        }
+
 @router.post("/reload_templates")
 async def reload_templates(
     agent: NucleiAgent = Depends(get_nuclei_agent)

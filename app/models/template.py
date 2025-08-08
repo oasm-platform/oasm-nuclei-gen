@@ -127,6 +127,7 @@ class RAGSearchResponse(BaseModel):
     total_results: int = Field(..., description="Total number of results")
 
 
+
 class ErrorResponse(BaseModel):
     error: str = Field(..., description="Error message")
     details: Optional[Dict[str, Any]] = Field(None, description="Error details")

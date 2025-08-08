@@ -5,6 +5,9 @@ import logging
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 import yaml
+import subprocess
+import shutil
+import asyncio
 
 import chromadb
 from chromadb.config import Settings
@@ -74,12 +77,12 @@ class VectorDBService:
         collection_name = self.config.get("collection_name", "nuclei_templates")
         
         # Check if we should use HTTP client (Docker mode) or embedded mode
-        chromadb_mode = self.config.get("mode", os.getenv("VECTOR_DB_MODE", "embedded"))
+        chromadb_mode = self.config.get("mode", os.getenv("CHROMADB_MODE", "embedded"))
         
         if chromadb_mode == "client":
             # HTTP Client mode for Docker
-            host = self.config.get("host", os.getenv("VECTOR_DB_HOST", "localhost"))
-            port = self.config.get("port", int(os.getenv("VECTOR_DB_PORT", "8001")))
+            host = self.config.get("host", os.getenv("CHROMADB_HOST", "localhost"))
+            port = self.config.get("port", int(os.getenv("CHROMADB_PORT", "8001")))
             
             logger.info(f"Connecting to ChromaDB server at {host}:{port}")
             self.client = chromadb.HttpClient(
@@ -254,6 +257,38 @@ class VectorDBService:
             self.client.delete_collection(self.collection.name)
             self.collection = None
             logger.info("Collection deleted")
+    
+    """
+    Clear the collection
+    """
+    async def clear_collection(self) -> Dict[str, Any]:
+        try:
+            if not self.collection:
+                await self.initialize()
+            
+            collection_name = self.collection.name
+            
+            # Delete and recreate collection
+            self.client.delete_collection(collection_name)
+            self.collection = self.client.create_collection(
+                name=collection_name,
+                metadata={"hnsw:space": "cosine"}
+            )
+            
+            logger.info(f"Collection '{collection_name}' cleared successfully")
+            return {
+                "status": "success",
+                "message": f"Collection '{collection_name}' cleared successfully",
+                "collection_name": collection_name
+            }
+        
+        except Exception as e:
+            error_msg = f"Failed to clear collection: {str(e)}"
+            logger.error(error_msg)
+            return {
+                "status": "failed",
+                "error": error_msg
+            }
     
     """
     Load a Nuclei template from a file
