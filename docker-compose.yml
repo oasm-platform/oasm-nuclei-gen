@@ -33,9 +33,9 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - CHROMADB_HOST=chromadb
-      - CHROMADB_PORT=8000
-      - CHROMADB_MODE=client
+      - VECTOR_DB_HOST=chromadb
+      - VECTOR_DB_PORT=8000
+      - VECTOR_DB_MODE=client
       - PYTHONPATH=/app
     volumes:
       - ./config:/app/config

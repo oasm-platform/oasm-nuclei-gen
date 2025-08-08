@@ -53,7 +53,7 @@ async def generate_template(
             detail=ErrorResponse(
                 error="Internal server error during template generation",
                 details={"exception": str(e)}
-            ).dict()
+            ).model_dump()
         )
 
 
@@ -100,7 +100,7 @@ async def validate_template(
             detail=ErrorResponse(
                 error="Internal server error during template validation",
                 details={"exception": str(e)}
-            ).dict()
+            ).model_dump()
         )
 
 
@@ -139,7 +139,7 @@ async def search_templates(
             detail=ErrorResponse(
                 error="Internal server error during template search",
                 details={"exception": str(e)}
-            ).dict()
+            ).model_dump()
         )
 
 
@@ -202,7 +202,7 @@ async def reload_templates(
             detail=ErrorResponse(
                 error="Internal server error during template reload",
                 details={"exception": str(e)}
-            ).dict()
+            ).model_dump()
         )
 
 
@@ -234,7 +234,7 @@ async def get_templates_by_severity(
             detail=ErrorResponse(
                 error="Internal server error during template search",
                 details={"exception": str(e)}
-            ).dict()
+            ).model_dump()
         )
 
 

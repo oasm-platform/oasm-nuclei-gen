@@ -74,12 +74,12 @@ class VectorDBService:
         collection_name = self.config.get("collection_name", "nuclei_templates")
         
         # Check if we should use HTTP client (Docker mode) or embedded mode
-        chromadb_mode = self.config.get("mode", os.getenv("CHROMADB_MODE", "embedded"))
+        chromadb_mode = self.config.get("mode", os.getenv("VECTOR_DB_MODE", "embedded"))
         
         if chromadb_mode == "client":
             # HTTP Client mode for Docker
-            host = self.config.get("host", os.getenv("CHROMADB_HOST", "localhost"))
-            port = self.config.get("port", int(os.getenv("CHROMADB_PORT", "8001")))
+            host = self.config.get("host", os.getenv("VECTOR_DB_HOST", "localhost"))
+            port = self.config.get("port", int(os.getenv("VECTOR_DB_PORT", "8001")))
             
             logger.info(f"Connecting to ChromaDB server at {host}:{port}")
             self.client = chromadb.HttpClient(
