@@ -8,16 +8,22 @@ from typing import Dict, Any
 from fastapi import APIRouter, HTTPException, Depends, Request
 
 from app.core.agent import NucleiAgent
-from app.models.template import (
-    TemplateGenerationRequest,
-    TemplateGenerationResponse,
-    TemplateValidationRequest,
-    TemplateValidationResponse,
-    RAGSearchRequest,
-    RAGSearchResponse,
-    UpdateRAGDataRequest,
-    UpdateRAGDataResponse,
-    ErrorResponse
+from app.api.v2.v2_dto import (
+    TemplateGenerationRequestV2,
+    TemplateGenerationResponseV2,
+    TemplateValidationRequestV2,
+    TemplateValidationResponseV2,
+    RAGSearchRequestV2,
+    RAGSearchResponseV2,
+    UpdateRAGDataRequestV2,
+    UpdateRAGDataResponseV2,
+    ErrorResponseV2,
+    GetTemplatesBySeverityResponseV2,
+    GetAgentStatusResponseV2,
+    GetRAGStatsResponseV2,
+    GetTemplatesByTagsResponseV2,
+    ReloadTemplatesResponseV2,
+    ClearRAGCollectionResponseV2
 )
 
 
@@ -36,7 +42,7 @@ async def get_templates_by_severity(
     severity: str,
     max_results: int = 10,
     agent: NucleiAgent = Depends(get_nuclei_agent)
-) -> Dict[str, Any]:
+) -> GetTemplatesBySeverityResponseV2:
     """
     Retrieve Nuclei templates filtered by security severity level.
     
@@ -60,22 +66,21 @@ async def get_templates_by_severity(
             max_results=max_results
         )
         
-        return {
-            "api_version": "v2",
-            "severity": severity,
-            "templates": templates,
-            "total_results": len(templates),
-            "metadata": {
+        return GetTemplatesBySeverityResponseV2(
+            severity=severity,
+            templates=templates,
+            total_results=len(templates),
+            filter_info={
                 "max_results": max_results,
                 "filter_type": "severity"
             }
-        }
+        )
         
     except Exception as e:
         logger.error(f"Error getting templates by severity: {e}")
         raise HTTPException(
             status_code=500,
-            detail=ErrorResponse(
+            detail=ErrorResponseV2(
                 error="Internal server error during template search",
                 details={"exception": str(e), "api_version": "v2"}
             ).model_dump()
@@ -85,7 +90,7 @@ async def get_templates_by_severity(
 @router.get("/agent_status")
 async def get_agent_status(
     agent: NucleiAgent = Depends(get_nuclei_agent)
-) -> Dict[str, Any]:
+) -> GetAgentStatusResponseV2:
     """
     Get the current health status and configuration of the Nuclei agent.
     
@@ -98,30 +103,28 @@ async def get_agent_status(
     """
     try:
         status = await agent.get_agent_status()
-        return {
-            "api_version": "v2",
-            "status": "healthy" if status["nuclei_available"] else "degraded",
-            "details": status,
-            "timestamp": status.get("timestamp"),
-            "system_info": {
+        return GetAgentStatusResponseV2(
+            status="healthy" if status["nuclei_available"] else "degraded",
+            details=status,
+            timestamp=status.get("timestamp"),
+            system_info={
                 "rag_initialized": agent.rag_engine.initialized if hasattr(agent, 'rag_engine') else False
             }
-        }
+        )
         
     except Exception as e:
         logger.error(f"Error getting agent status: {e}")
-        return {
-            "api_version": "v2",
-            "status": "error",
-            "error": str(e),
-            "timestamp": None
-        }
+        return GetAgentStatusResponseV2(
+            status="error",
+            details={"error": str(e)},
+            timestamp=None
+        )
 
 
 @router.get("/rag_stats")
 async def get_rag_stats(
     agent: NucleiAgent = Depends(get_nuclei_agent)
-) -> Dict[str, Any]:
+) -> GetRAGStatsResponseV2:
     """
     Retrieve statistics and metadata about the RAG (Retrieval-Augmented Generation) collection.
     
@@ -139,30 +142,29 @@ async def get_rag_stats(
         stats = await agent.rag_engine.get_collection_stats()
         
         # Enhanced v2 response with additional metadata
-        enhanced_stats = {
-            "api_version": "v2",
-            **stats,
-            "performance_metrics": {
+        return GetRAGStatsResponseV2(
+            collection_stats=stats,
+            performance_metrics={
                 "initialization_status": agent.rag_engine.initialized,
                 "last_update": stats.get("last_update")
-            }
-        }
-        
-        return enhanced_stats
+            },
+            initialization_status=agent.rag_engine.initialized
+        )
         
     except Exception as e:
         logger.error(f"Error getting RAG stats: {e}")
-        return {
-            "api_version": "v2",
-            "error": str(e)
-        }
+        return GetRAGStatsResponseV2(
+            collection_stats={},
+            initialization_status=False,
+            error=str(e)
+        )
 
 
-@router.post("/generate_template", response_model=TemplateGenerationResponse)
+@router.post("/generate_template", response_model=TemplateGenerationResponseV2)
 async def generate_template(
-    request_data: TemplateGenerationRequest,
+    request_data: TemplateGenerationRequestV2,
     agent: NucleiAgent = Depends(get_nuclei_agent)
-) -> TemplateGenerationResponse:
+) -> TemplateGenerationResponseV2:
     """
     Generate a new Nuclei security template based on vulnerability description.
     
@@ -202,18 +204,18 @@ async def generate_template(
         logger.error(f"Error in v2 generate_template endpoint: {e}")
         raise HTTPException(
             status_code=500,
-            detail=ErrorResponse(
+            detail=ErrorResponseV2(
                 error="Internal server error during template generation",
                 details={"exception": str(e), "api_version": "v2"}
             ).model_dump()
         )
 
 
-@router.post("/validate_template", response_model=TemplateValidationResponse)
+@router.post("/validate_template", response_model=TemplateValidationResponseV2)
 async def validate_template(
-    request_data: TemplateValidationRequest,
+    request_data: TemplateValidationRequestV2,
     agent: NucleiAgent = Depends(get_nuclei_agent)
-) -> TemplateValidationResponse:
+) -> TemplateValidationResponseV2:
     """
     Validate Nuclei template content for syntax correctness and compliance.
     
@@ -253,7 +255,7 @@ async def validate_template(
         except:
             pass
         
-        response = TemplateValidationResponse(
+        response = TemplateValidationResponseV2(
             validation_result=validation_result,
             template_id=template_id
         )
@@ -272,18 +274,18 @@ async def validate_template(
         logger.error(f"Error in v2 validate_template endpoint: {e}")
         raise HTTPException(
             status_code=500,
-            detail=ErrorResponse(
+            detail=ErrorResponseV2(
                 error="Internal server error during template validation",
                 details={"exception": str(e), "api_version": "v2"}
             ).model_dump()
         )
 
 
-@router.post("/search_templates", response_model=RAGSearchResponse)
+@router.post("/search_templates", response_model=RAGSearchResponseV2)
 async def search_templates(
-    request_data: RAGSearchRequest,
+    request_data: RAGSearchRequestV2,
     agent: NucleiAgent = Depends(get_nuclei_agent)
-) -> RAGSearchResponse:
+) -> RAGSearchResponseV2:
     """
     Search for similar Nuclei templates using semantic similarity matching.
     
@@ -314,7 +316,7 @@ async def search_templates(
             similarity_threshold=request_data.similarity_threshold
         )
         
-        response = RAGSearchResponse(
+        response = RAGSearchResponseV2(
             results=results,
             query=request_data.query,
             total_results=len(results)
@@ -337,7 +339,7 @@ async def search_templates(
         logger.error(f"Error in v2 search_templates endpoint: {e}")
         raise HTTPException(
             status_code=500,
-            detail=ErrorResponse(
+            detail=ErrorResponseV2(
                 error="Internal server error during template search",
                 details={"exception": str(e), "api_version": "v2"}
             ).model_dump()
@@ -347,7 +349,7 @@ async def search_templates(
 @router.post("/reload_templates")
 async def reload_templates(
     agent: NucleiAgent = Depends(get_nuclei_agent)
-) -> Dict[str, Any]:
+) -> ReloadTemplatesResponseV2:
     """
     Reload all Nuclei templates into the RAG collection from the template repository.
     
@@ -366,22 +368,21 @@ async def reload_templates(
         
         count = await agent.rag_engine.reload_templates()
         
-        return {
-            "api_version": "v2",
-            "success": True,
-            "templates_loaded": count,
-            "message": f"Successfully reloaded {count} templates",
-            "performance_metrics": {
-                "reload_timestamp": None,  # Could be enhanced with actual timestamp
+        return ReloadTemplatesResponseV2(
+            success=True,
+            templates_loaded=count,
+            message=f"Successfully reloaded {count} templates",
+            performance_metrics={
+                "reload_timestamp": None,
                 "processing_mode": "enhanced_v2"
             }
-        }
+        )
         
     except Exception as e:
         logger.error(f"Error reloading templates: {e}")
         raise HTTPException(
             status_code=500,
-            detail=ErrorResponse(
+            detail=ErrorResponseV2(
                 error="Internal server error during template reload",
                 details={"exception": str(e), "api_version": "v2"}
             ).model_dump()
@@ -393,7 +394,7 @@ async def get_templates_by_tags(
     tags: list[str],
     max_results: int = 10,
     agent: NucleiAgent = Depends(get_nuclei_agent)
-) -> Dict[str, Any]:
+) -> GetTemplatesByTagsResponseV2:
     """
     Retrieve Nuclei templates filtered by specified tags.
     
@@ -420,33 +421,32 @@ async def get_templates_by_tags(
             max_results=max_results
         )
         
-        return {
-            "api_version": "v2",
-            "tags": tags,
-            "templates": templates,
-            "total_results": len(templates),
-            "search_metadata": {
+        return GetTemplatesByTagsResponseV2(
+            tags=tags,
+            templates=templates,
+            total_results=len(templates),
+            search_metadata={
                 "tag_count": len(tags),
                 "max_results": max_results,
                 "matching_algorithm": "enhanced_v2"
             }
-        }
+        )
         
     except Exception as e:
         logger.error(f"Error getting templates by tags: {e}")
         raise HTTPException(
             status_code=500,
-            detail=ErrorResponse(
+            detail=ErrorResponseV2(
                 error="Internal server error during template search",
                 details={"exception": str(e), "api_version": "v2"}
             ).model_dump()
         )
 
 
-@router.put("/update_rag_data", response_model=UpdateRAGDataResponse)
+@router.put("/update_rag_data", response_model=UpdateRAGDataResponseV2)
 async def update_rag_data(
     agent: NucleiAgent = Depends(get_nuclei_agent)
-) -> UpdateRAGDataResponse:
+) -> UpdateRAGDataResponseV2:
     """
     Update RAG collection by downloading latest templates and rebuilding the vector index.
     
@@ -476,7 +476,7 @@ async def update_rag_data(
         )
         
         # Create response based on result with v2 enhancements
-        response = UpdateRAGDataResponse(
+        response = UpdateRAGDataResponseV2(
             success=result["status"] in ["success", "partial_failure"],
             message=result["message"],
             templates_cleared=result.get("templates_cleared", 0),
@@ -503,7 +503,7 @@ async def update_rag_data(
         logger.error(f"Error in v2 update_rag_data endpoint: {e}")
         raise HTTPException(
             status_code=500,
-            detail=ErrorResponse(
+            detail=ErrorResponseV2(
                 error="Internal server error during RAG data update",
                 details={"exception": str(e), "api_version": "v2"}
             ).model_dump()
@@ -513,7 +513,7 @@ async def update_rag_data(
 @router.delete("/rag_collection")
 async def clear_rag_collection(
     agent: NucleiAgent = Depends(get_nuclei_agent)
-) -> Dict[str, Any]:
+) -> ClearRAGCollectionResponseV2:
     """
     Clear all templates and embeddings from the RAG collection.
     
@@ -536,26 +536,26 @@ async def clear_rag_collection(
         result = await agent.rag_engine.vector_db.clear_collection()
         
         # Enhanced v2 response
-        enhanced_result = {
-            "api_version": "v2",
-            **result,
-            "cleanup_metadata": {
-                "cleanup_mode": "enhanced_v2",
-                "timestamp": None  # Could be enhanced with actual timestamp
-            }
-        }
-        
         if result.get("status") == "success":
             logger.info(f"V2 Collection cleared successfully: {result.get('collection_name')}")
         else:
             logger.error(f"V2 Failed to clear collection: {result.get('error')}")
         
-        return enhanced_result
+        return ClearRAGCollectionResponseV2(
+            status=result.get("status", "unknown"),
+            collection_name=result.get("collection_name"),
+            message=result.get("message"),
+            error=result.get("error"),
+            cleared_count=result.get("cleared_count"),
+            cleanup_metadata={
+                "cleanup_mode": "enhanced_v2",
+                "timestamp": None
+            }
+        )
         
     except Exception as e:
         logger.error(f"Error clearing v2 collection: {e}")
-        return {
-            "api_version": "v2",
-            "error": f"Internal server error during collection clear: {str(e)}",
-            "status": "failed"
-        }
+        return ClearRAGCollectionResponseV2(
+            status="failed",
+            error=f"Internal server error during collection clear: {str(e)}"
+        )

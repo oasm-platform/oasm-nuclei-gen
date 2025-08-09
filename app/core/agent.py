@@ -16,7 +16,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 
 from app.core.rag_engine import RAGEngine
 from app.core.nuclei_runner import NucleiRunner
-from app.models.template import (
+from app.api.v1.v1_dto import (
     TemplateGenerationRequest,
     TemplateGenerationResponse,
     ValidationResult

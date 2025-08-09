@@ -7,7 +7,7 @@ from typing import Dict, Any
 from fastapi import APIRouter, HTTPException, Depends, Request
 
 from app.core.agent import NucleiAgent
-from app.models.template import (
+from app.api.v1.v1_dto import (
     TemplateGenerationRequest,
     TemplateGenerationResponse,
     TemplateValidationRequest,
@@ -16,7 +16,13 @@ from app.models.template import (
     RAGSearchResponse,
     UpdateRAGDataRequest,
     UpdateRAGDataResponse,
-    ErrorResponse
+    ErrorResponse,
+    GetTemplatesBySeverityResponse,
+    GetAgentStatusResponse,
+    GetRAGStatsResponse,
+    GetTemplatesByTagsResponse,
+    ReloadTemplatesResponse,
+    ClearRAGCollectionResponse
 )
 
 
@@ -35,7 +41,7 @@ async def get_templates_by_severity(
     severity: str,
     max_results: int = 10,
     agent: NucleiAgent = Depends(get_nuclei_agent)
-) -> Dict[str, Any]:
+) -> GetTemplatesBySeverityResponse:
     """
     Retrieve Nuclei templates filtered by security severity level.
     
@@ -58,11 +64,11 @@ async def get_templates_by_severity(
             max_results=max_results
         )
         
-        return {
-            "severity": severity,
-            "templates": templates,
-            "total_results": len(templates)
-        }
+        return GetTemplatesBySeverityResponse(
+            severity=severity,
+            templates=templates,
+            total_results=len(templates)
+        )
         
     except Exception as e:
         logger.error(f"Error getting templates by severity: {e}")
@@ -77,7 +83,7 @@ async def get_templates_by_severity(
 @router.get("/agent_status")
 async def get_agent_status(
     agent: NucleiAgent = Depends(get_nuclei_agent)
-) -> Dict[str, Any]:
+) -> GetAgentStatusResponse:
     """
     Get the current health status and configuration of the Nuclei agent.
     
@@ -90,23 +96,23 @@ async def get_agent_status(
     """
     try:
         status = await agent.get_agent_status()
-        return {
-            "status": "healthy" if status["nuclei_available"] else "degraded",
-            "details": status
-        }
+        return GetAgentStatusResponse(
+            status="healthy" if status["nuclei_available"] else "degraded",
+            details=status
+        )
         
     except Exception as e:
         logger.error(f"Error getting agent status: {e}")
-        return {
-            "status": "error",
-            "error": str(e)
-        }
+        return GetAgentStatusResponse(
+            status="error",
+            details={"error": str(e)}
+        )
 
 
 @router.get("/rag_stats")
 async def get_rag_stats(
     agent: NucleiAgent = Depends(get_nuclei_agent)
-) -> Dict[str, Any]:
+) -> GetRAGStatsResponse:
     """
     Retrieve statistics and metadata about the RAG (Retrieval-Augmented Generation) collection.
     
@@ -122,13 +128,16 @@ async def get_rag_stats(
             await agent.rag_engine.initialize()
         
         stats = await agent.rag_engine.get_collection_stats()
-        return stats
+        return GetRAGStatsResponse(
+            collection_stats=stats
+        )
         
     except Exception as e:
         logger.error(f"Error getting RAG stats: {e}")
-        return {
-            "error": str(e)
-        }
+        return GetRAGStatsResponse(
+            collection_stats={},
+            error=str(e)
+        )
 
 
 
@@ -298,7 +307,7 @@ async def search_templates(
 @router.post("/reload_templates")
 async def reload_templates(
     agent: NucleiAgent = Depends(get_nuclei_agent)
-) -> Dict[str, Any]:
+) -> ReloadTemplatesResponse:
     """
     Reload all Nuclei templates into the RAG collection from the template repository.
     
@@ -316,11 +325,11 @@ async def reload_templates(
         
         count = await agent.rag_engine.reload_templates()
         
-        return {
-            "success": True,
-            "templates_loaded": count,
-            "message": f"Successfully reloaded {count} templates"
-        }
+        return ReloadTemplatesResponse(
+            success=True,
+            templates_loaded=count,
+            message=f"Successfully reloaded {count} templates"
+        )
         
     except Exception as e:
         logger.error(f"Error reloading templates: {e}")
@@ -340,7 +349,7 @@ async def get_templates_by_tags(
     tags: list[str],
     max_results: int = 10,
     agent: NucleiAgent = Depends(get_nuclei_agent)
-) -> Dict[str, Any]:
+) -> GetTemplatesByTagsResponse:
     """
     Retrieve Nuclei templates filtered by specified tags.
     
@@ -366,11 +375,11 @@ async def get_templates_by_tags(
             max_results=max_results
         )
         
-        return {
-            "tags": tags,
-            "templates": templates,
-            "total_results": len(templates)
-        }
+        return GetTemplatesByTagsResponse(
+            tags=tags,
+            templates=templates,
+            total_results=len(templates)
+        )
         
     except Exception as e:
         logger.error(f"Error getting templates by tags: {e}")
@@ -452,7 +461,7 @@ async def update_rag_data(
 @router.delete("/rag_collection")
 async def clear_rag_collection(
     agent: NucleiAgent = Depends(get_nuclei_agent)
-) -> Dict[str, Any]:
+) -> ClearRAGCollectionResponse:
     """
     Clear all templates and embeddings from the RAG collection.
     
@@ -478,11 +487,17 @@ async def clear_rag_collection(
         else:
             logger.error(f"Failed to clear collection: {result.get('error')}")
         
-        return result
+        return ClearRAGCollectionResponse(
+            status=result.get("status", "unknown"),
+            collection_name=result.get("collection_name"),
+            message=result.get("message"),
+            error=result.get("error"),
+            cleared_count=result.get("cleared_count")
+        )
         
     except Exception as e:
         logger.error(f"Error clearing collection: {e}")
-        return {
-            "error": f"Internal server error during collection clear: {str(e)}",
-            "status": "failed"
-        }
+        return ClearRAGCollectionResponse(
+            status="failed",
+            error=f"Internal server error during collection clear: {str(e)}"
+        )

@@ -8,9 +8,8 @@ import tempfile
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 import yaml
-import platform
 
-from app.models.template import ValidationResult
+from app.api.v1.v1_dto import ValidationResult
 
 
 logger = logging.getLogger(__name__)
