@@ -10,6 +10,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.endpoints import router as v1_router
+from app.api.v2.endpoints import router as v2_router
 from app.core.rag_engine import RAGEngine
 
 
@@ -63,6 +64,7 @@ app.add_middleware(
 )
 
 app.include_router(v1_router, prefix="/api/v1", tags=["v1"])
+app.include_router(v2_router, prefix="/api/v2", tags=["v2"])
 
 
 @app.get("/")
