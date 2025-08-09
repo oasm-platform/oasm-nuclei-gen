@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.endpoints import router as v1_router
 from app.api.v2.endpoints import router as v2_router
 from app.core.rag_engine import RAGEngine
+from app.core.scheduler import RAGScheduler
 
 
 logging.basicConfig(
@@ -28,6 +29,9 @@ logging.getLogger("watchfiles").setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
 
+# Global scheduler instance
+rag_scheduler = RAGScheduler()
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -43,7 +47,13 @@ async def lifespan(app: FastAPI):
         logger.error(f"Failed to initialize RAG engine: {e}")
         raise
     
+    # Setup automatic scheduler for RAG updates
+    rag_scheduler.setup_scheduler()
+    
     yield
+    
+    # Shutdown scheduler
+    rag_scheduler.shutdown_scheduler()
     
     logger.info("Shutting down Nuclei AI Agent Template Generator")
 
