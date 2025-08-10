@@ -81,6 +81,24 @@ class NucleiAgent:
                 "validation_required": os.getenv("TEMPLATE_VALIDATION_REQUIRED", "true").lower() == "true",
                 "output_format": os.getenv("TEMPLATE_OUTPUT_FORMAT", "yaml"),
                 "include_metadata": os.getenv("TEMPLATE_INCLUDE_METADATA", "true").lower() == "true"
+            },
+            "logging": {
+                "level": os.getenv("LOG_LEVEL", "INFO"),
+                "format": os.getenv("LOG_FORMAT", "%(asctime)s - %(name)s - %(levelname)s - %(message)s"),
+                "file_path": os.getenv("LOG_FILE_PATH", "logs/app.log"),
+                "max_bytes": int(os.getenv("LOG_MAX_BYTES", "10485760")),
+                "backup_count": int(os.getenv("LOG_BACKUP_COUNT", "5"))
+            },
+            "security": {
+                "rate_limit_requests_per_minute": int(os.getenv("RATE_LIMIT_REQUESTS_PER_MINUTE", "60")),
+                "rate_limit_burst_size": int(os.getenv("RATE_LIMIT_BURST_SIZE", "10")),
+                "max_prompt_length": int(os.getenv("MAX_PROMPT_LENGTH", "1000")),
+                "allowed_file_types": os.getenv("ALLOWED_FILE_TYPES", ".yaml,.yml").split(",")
+            },
+            "performance": {
+                "max_concurrent_requests": int(os.getenv("MAX_CONCURRENT_REQUESTS", "10")),
+                "request_timeout": int(os.getenv("REQUEST_TIMEOUT", "120")),
+                "cache_ttl": int(os.getenv("CACHE_TTL", "3600"))
             }
         }
     

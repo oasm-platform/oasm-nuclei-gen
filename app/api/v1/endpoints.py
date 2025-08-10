@@ -22,7 +22,8 @@ from app.api.v1.v1_dto import (
     GetRAGStatsResponse,
     GetTemplatesByTagsResponse,
     ReloadTemplatesResponse,
-    ClearRAGCollectionResponse
+    ClearRAGCollectionResponse,
+    SystemInfo
 )
 
 
@@ -95,17 +96,55 @@ async def get_agent_status(
         This endpoint does not raise exceptions but returns error status in response body
     """
     try:
+        logger.info("Getting agent status...")
         status = await agent.get_agent_status()
-        return GetAgentStatusResponse(
-            status="healthy" if status["nuclei_available"] else "degraded",
-            details=status
+        logger.info(f"Agent status received: {list(status.keys())}")
+        
+        # Extract templates count from rag_collection_stats if available
+        rag_stats = status.get("rag_collection_stats", {})
+        templates_count = None
+        if isinstance(rag_stats, dict) and "total_documents" in rag_stats:
+            templates_count = rag_stats["total_documents"]
+        
+        # Create SystemInfo with proper field mapping
+        logger.info("Creating SystemInfo object...")
+        system_info = SystemInfo(
+            nuclei_version=status.get("nuclei_version"),
+            nuclei_available=status.get("nuclei_available", False),
+            rag_initialized=status.get("rag_engine_initialized", False),  # Map field name
+            templates_count=templates_count,
+            last_update=None  # Could be extracted from metadata if available
         )
+        logger.info(f"SystemInfo created: {system_info.model_dump()}")
+        
+        logger.info("Creating GetAgentStatusResponse...")
+        response = GetAgentStatusResponse(
+            status="healthy" if status.get("nuclei_available", False) else "degraded",
+            details=system_info
+        )
+        logger.info("GetAgentStatusResponse created successfully")
+        return response
         
     except Exception as e:
         logger.error(f"Error getting agent status: {e}")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
+        
+        # Create error response with required fields
+        logger.info("Creating error SystemInfo...")
+        error_system_info = SystemInfo(
+            nuclei_version=None,
+            nuclei_available=False,
+            rag_initialized=False,
+            templates_count=None,
+            last_update=None
+        )
+        
+        logger.info("Creating error GetAgentStatusResponse...")
         return GetAgentStatusResponse(
             status="error",
-            details={"error": str(e)}
+            details=error_system_info,
+            timestamp=None
         )
 
 

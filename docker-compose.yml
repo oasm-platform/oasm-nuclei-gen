@@ -1,17 +1,15 @@
-version: "3.8"
-
 services:
   chromadb:
     image: chromadb/chroma:latest
     container_name: nuclei_chromadb
     ports:
-      - "8001:8000" # ChromaDB default port mapped to 8001 to avoid conflicts
+      - "${CHROMADB_EXTERNAL_PORT}:${CHROMADB_PORT}"
     environment:
-      - CHROMA_SERVER_AUTHN_CREDENTIALS_FILE=/chroma/server.htpasswd
-      - CHROMA_SERVER_AUTHN_PROVIDER=chromadb.auth.basic_authn.BasicAuthenticationServerProvider
-      - ANONYMIZED_TELEMETRY=False
-      - IS_PERSISTENT=TRUE
-      - PERSIST_DIRECTORY=/chroma/chroma
+      - CHROMA_SERVER_AUTHN_CREDENTIALS_FILE=${CHROMA_SERVER_AUTHN_CREDENTIALS_FILE}
+      - CHROMA_SERVER_AUTHN_PROVIDER=${CHROMA_SERVER_AUTHN_PROVIDER}
+      - ANONYMIZED_TELEMETRY=${ANONYMIZED_TELEMETRY}
+      - IS_PERSISTENT=${IS_PERSISTENT}
+      - PERSIST_DIRECTORY=${PERSIST_DIRECTORY}
     volumes:
       - chromadb_data:/chroma/chroma
       - ./config/chromadb:/chroma/config
@@ -19,24 +17,76 @@ services:
       - nuclei_network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
+      test: ["CMD", "curl", "-f", "http://localhost:${CHROMADB_PORT}/api/v1/heartbeat"]
       interval: 30s
       timeout: 10s
       retries: 5
       start_period: 30s
 
-  nuclei-agent:
+  api:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: nuclei_agent_app
+    container_name: nuclei_agent_api
     ports:
-      - "8000:8000"
+      - "${API_EXTERNAL_PORT}:${API_PORT}"
     environment:
-      - VECTOR_DB_HOST=chromadb
-      - VECTOR_DB_PORT=8000
-      - VECTOR_DB_MODE=client
-      - PYTHONPATH=/app
+      # App Configuration
+      - APP_NAME=${APP_NAME}
+      - APP_VERSION=${APP_VERSION}
+      - APP_DEBUG=${APP_DEBUG}
+      - APP_HOST=${API_HOST}
+      - APP_PORT=${API_PORT}
+      # Vector Database Configuration
+      - VECTOR_DB_HOST=${CHROMADB_HOST}
+      - VECTOR_DB_PORT=${CHROMADB_PORT}
+      - VECTOR_DB_MODE=${VECTOR_DB_MODE}
+      - VECTOR_DB_TYPE=${VECTOR_DB_TYPE}
+      - VECTOR_DB_COLLECTION_NAME=${VECTOR_DB_COLLECTION_NAME}
+      - VECTOR_DB_EMBEDDING_MODEL=${VECTOR_DB_EMBEDDING_MODEL}
+      - VECTOR_DB_CHUNK_SIZE=${VECTOR_DB_CHUNK_SIZE}
+      - VECTOR_DB_CHUNK_OVERLAP=${VECTOR_DB_CHUNK_OVERLAP}
+      # LLM Configuration
+      - LLM_PROVIDER=${LLM_PROVIDER}
+      - LLM_MODEL=${LLM_MODEL}
+      - LLM_TEMPERATURE=${LLM_TEMPERATURE}
+      - LLM_MAX_TOKENS=${LLM_MAX_TOKENS}
+      - LLM_TIMEOUT=${LLM_TIMEOUT}
+      # API Keys
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      # Nuclei Configuration
+      - NUCLEI_BINARY_PATH=${NUCLEI_BINARY_PATH}
+      - NUCLEI_TIMEOUT=${NUCLEI_TIMEOUT}
+      - NUCLEI_VALIDATE_ARGS=${NUCLEI_VALIDATE_ARGS}
+      - NUCLEI_TEMPLATES_DIR=${NUCLEI_TEMPLATES_DIR}
+      # RAG Configuration
+      - RAG_MAX_RETRIEVED_DOCS=${RAG_MAX_RETRIEVED_DOCS}
+      - RAG_SIMILARITY_THRESHOLD=${RAG_SIMILARITY_THRESHOLD}
+      - RAG_SEARCH_TYPE=${RAG_SEARCH_TYPE}
+      # Logging Configuration
+      - LOG_LEVEL=${LOG_LEVEL}
+      - LOG_FORMAT=${LOG_FORMAT}
+      - LOG_FILE_PATH=${LOG_FILE_PATH}
+      - LOG_MAX_BYTES=${LOG_MAX_BYTES}
+      - LOG_BACKUP_COUNT=${LOG_BACKUP_COUNT}
+      # Security Configuration
+      - RATE_LIMIT_REQUESTS_PER_MINUTE=${RATE_LIMIT_REQUESTS_PER_MINUTE}
+      - RATE_LIMIT_BURST_SIZE=${RATE_LIMIT_BURST_SIZE}
+      - MAX_PROMPT_LENGTH=${MAX_PROMPT_LENGTH}
+      - ALLOWED_FILE_TYPES=${ALLOWED_FILE_TYPES}
+      # Performance Configuration
+      - MAX_CONCURRENT_REQUESTS=${MAX_CONCURRENT_REQUESTS}
+      - REQUEST_TIMEOUT=${REQUEST_TIMEOUT}
+      - CACHE_TTL=${CACHE_TTL}
+      # Template Generation Configuration
+      - TEMPLATE_MAX_RETRIES=${TEMPLATE_MAX_RETRIES}
+      - TEMPLATE_VALIDATION_REQUIRED=${TEMPLATE_VALIDATION_REQUIRED}
+      - TEMPLATE_OUTPUT_FORMAT=${TEMPLATE_OUTPUT_FORMAT}
+      - TEMPLATE_INCLUDE_METADATA=${TEMPLATE_INCLUDE_METADATA}
+      # Python Configuration
+      - PYTHONPATH=${PYTHONPATH}
+      - PYTHONUNBUFFERED=${PYTHONUNBUFFERED}
     volumes:
       - ./config:/app/config
       - ./logs:/app/logs
@@ -48,7 +98,74 @@ services:
       chromadb:
         condition: service_healthy
     restart: unless-stopped
-    command: ["python", "-m", "app.main"]
+    command:
+      [
+        "uvicorn",
+        "app.main:app",
+        "--host",
+        "${API_HOST}",
+        "--port",
+        "${API_PORT}",
+        "--workers",
+        "${API_WORKERS}",
+      ]
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nuclei_agent_scheduler
+    environment:
+      # Vector Database Configuration
+      - VECTOR_DB_HOST=${CHROMADB_HOST}
+      - VECTOR_DB_PORT=${CHROMADB_PORT}
+      - VECTOR_DB_MODE=${VECTOR_DB_MODE}
+      - VECTOR_DB_TYPE=${VECTOR_DB_TYPE}
+      - VECTOR_DB_COLLECTION_NAME=${VECTOR_DB_COLLECTION_NAME}
+      - VECTOR_DB_EMBEDDING_MODEL=${VECTOR_DB_EMBEDDING_MODEL}
+      - VECTOR_DB_CHUNK_SIZE=${VECTOR_DB_CHUNK_SIZE}
+      - VECTOR_DB_CHUNK_OVERLAP=${VECTOR_DB_CHUNK_OVERLAP}
+      # LLM Configuration
+      - LLM_PROVIDER=${LLM_PROVIDER}
+      - LLM_MODEL=${LLM_MODEL}
+      - LLM_TEMPERATURE=${LLM_TEMPERATURE}
+      - LLM_MAX_TOKENS=${LLM_MAX_TOKENS}
+      - LLM_TIMEOUT=${LLM_TIMEOUT}
+      # API Keys
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      # Nuclei Configuration
+      - NUCLEI_TEMPLATES_DIR=${NUCLEI_TEMPLATES_DIR}
+      - NUCLEI_TIMEOUT=${NUCLEI_TIMEOUT}
+      - NUCLEI_VALIDATE_ARGS=${NUCLEI_VALIDATE_ARGS}
+      # RAG Configuration
+      - RAG_MAX_RETRIEVED_DOCS=${RAG_MAX_RETRIEVED_DOCS}
+      - RAG_SIMILARITY_THRESHOLD=${RAG_SIMILARITY_THRESHOLD}
+      - RAG_SEARCH_TYPE=${RAG_SEARCH_TYPE}
+      # Template Auto-Update Configuration
+      - AUTO_UPDATE_TEMPLATE_NUCLEI=${AUTO_UPDATE_TEMPLATE_NUCLEI}
+      - TIME_UPDATE_TEMPLATE=${TIME_UPDATE_TEMPLATE}
+      # Logging Configuration
+      - LOG_LEVEL=${LOG_LEVEL}
+      - LOG_FORMAT=${LOG_FORMAT}
+      - LOG_FILE_PATH=${LOG_FILE_PATH}
+      - LOG_MAX_BYTES=${LOG_MAX_BYTES}
+      - LOG_BACKUP_COUNT=${LOG_BACKUP_COUNT}
+      # Python Configuration
+      - PYTHONPATH=${PYTHONPATH}
+      - PYTHONUNBUFFERED=${PYTHONUNBUFFERED}
+    volumes:
+      - ./config:/app/config
+      - ./logs:/app/logs
+      - ./rag_data:/app/rag_data
+      - ./templates:/app/templates
+    networks:
+      - nuclei_network
+    depends_on:
+      chromadb:
+        condition: service_healthy
+    restart: unless-stopped
+    command: ["python", "scheduler.py"]
 
 volumes:
   chromadb_data:

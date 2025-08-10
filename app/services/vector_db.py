@@ -93,8 +93,8 @@ class VectorDBService:
         
         if chromadb_mode == "client":
             # HTTP Client mode for Docker
-            host = self.config.get("host", os.getenv("CHROMADB_HOST", "localhost"))
-            port = self.config.get("port", int(os.getenv("CHROMADB_PORT", "8001")))
+            host = self.config.get("host", os.getenv("VECTOR_DB_HOST", os.getenv("CHROMADB_HOST", "localhost")))
+            port = self.config.get("port", int(os.getenv("VECTOR_DB_PORT", os.getenv("CHROMADB_PORT", "8001"))))
             
             logger.info(f"Connecting to ChromaDB server at {host}:{port}")
             self.client = chromadb.HttpClient(

@@ -2,24 +2,35 @@
 Main entry point of the Nuclei AI Agent Template Generator
 """
 import logging
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 import uvicorn
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.endpoints import router as v1_router
-from app.api.v2.endpoints import router as v2_router
 from app.core.rag_engine import RAGEngine
-from app.core.scheduler import RAGScheduler
 
+# Load environment variables
+load_dotenv()
+
+
+# Configure logging using environment variables
+log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+log_format = os.getenv("LOG_FORMAT", "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+log_file_path = os.getenv("LOG_FILE_PATH", "logs/app.log")
+
+# Ensure logs directory exists
+Path(log_file_path).parent.mkdir(parents=True, exist_ok=True)
 
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    level=getattr(logging, log_level, logging.INFO),
+    format=log_format,
     handlers=[
-        logging.FileHandler("logs/app.log"),
+        logging.FileHandler(log_file_path),
         logging.StreamHandler()
     ]
 )
@@ -29,8 +40,6 @@ logging.getLogger("watchfiles").setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
 
-# Global scheduler instance
-rag_scheduler = RAGScheduler()
 
 
 @asynccontextmanager
@@ -47,21 +56,15 @@ async def lifespan(app: FastAPI):
         logger.error(f"Failed to initialize RAG engine: {e}")
         raise
     
-    # Setup automatic scheduler for RAG updates
-    rag_scheduler.setup_scheduler()
-    
     yield
-    
-    # Shutdown scheduler
-    rag_scheduler.shutdown_scheduler()
     
     logger.info("Shutting down Nuclei AI Agent Template Generator")
 
 
 app = FastAPI(
-    title="Nuclei AI Agent Template Generator",
+    title=os.getenv("APP_NAME", "Nuclei AI Agent Template Generator"),
     description="AI-powered Nuclei template generation and validation service",
-    version="1.0.0",
+    version=os.getenv("APP_VERSION", "1.0.0"),
     lifespan=lifespan
 )
 
@@ -74,14 +77,13 @@ app.add_middleware(
 )
 
 app.include_router(v1_router, prefix="/api/v1", tags=["v1"])
-app.include_router(v2_router, prefix="/api/v2", tags=["v2"])
 
 
 @app.get("/")
 async def root():
     return {
-        "message": "Nuclei AI Agent Template Generator",
-        "version": "1.0.0",
+        "message": os.getenv("APP_NAME", "Nuclei AI Agent Template Generator"),
+        "version": os.getenv("APP_VERSION", "1.0.0"),
         "status": "running"
     }
 
@@ -92,10 +94,16 @@ async def health_check():
 
 
 if __name__ == "__main__":
+    # Get configuration from environment variables
+    host = os.getenv("APP_HOST", "localhost")
+    port = int(os.getenv("APP_PORT", "8000"))
+    debug = os.getenv("APP_DEBUG", "false").lower() == "true"
+    log_level = os.getenv("LOG_LEVEL", "info").lower()
+    
     uvicorn.run(
         "app.main:app",
-        host="localhost",
-        port=8000,
-        reload=True,
-        log_level="info"
+        host=host,
+        port=port,
+        reload=debug,
+        log_level=log_level
     )
