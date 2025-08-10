@@ -74,42 +74,11 @@ class GetTemplatesBySeverityResponse(BaseModel):
         return v
 
 
-class SystemInfo(BaseModel):
-    nuclei_version: Optional[str] = Field(None, description="Nuclei version")
-    nuclei_available: bool = Field(..., description="Whether Nuclei is available")
-    rag_initialized: bool = Field(..., description="Whether RAG engine is initialized")
-    templates_count: Optional[int] = Field(None, description="Number of loaded templates")
-    last_update: Optional[str] = Field(None, description="Last update timestamp")
 
 
-class GetAgentStatusResponse(BaseModel):
-    status: str = Field(..., description="Overall agent status")
-    details: SystemInfo = Field(..., description="Detailed system information")
-    timestamp: Optional[str] = Field(None, description="Status check timestamp")
-    
-    @field_validator('status')
-    @classmethod
-    def validate_status(cls, v):
-        valid_statuses = ['healthy', 'degraded', 'error']
-        if v not in valid_statuses:
-            raise ValueError(f'Status must be one of: {", ".join(valid_statuses)}')
-        return v
-
-
-class CollectionStats(BaseModel):
-    collection_name: str = Field(..., description="Collection name")
+class GetRagStats(BaseModel):
     total_documents: int = Field(..., ge=0, description="Total number of documents")
-    embedding_dimension: Optional[int] = Field(None, description="Embedding dimension")
-    last_updated: Optional[str] = Field(None, description="Last update timestamp")
-    index_status: Optional[str] = Field(None, description="Index status")
-    metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
-
-
-class GetRAGStatsResponse(BaseModel):
-    collection_stats: CollectionStats = Field(..., description="Collection statistics")
-    performance_metrics: Optional[Dict[str, Any]] = Field(None, description="Performance metrics")
-    error: Optional[str] = Field(None, description="Error message if any")
-
+    collection_name: str = Field(..., description="Collection name")
 
 class GetTemplatesByTagsResponse(BaseModel):
     tags: List[str] = Field(..., description="Requested tags")

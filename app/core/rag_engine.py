@@ -158,10 +158,9 @@ Template Content:
     async def get_templates_by_severity(self, severity: str, max_results: int = 10) -> List[Dict[str, Any]]:
         if not self.initialized:
             await self.initialize()
-        
         try:
             results = await self.vector_db.search_similar(
-                query=f"severity:{severity}",
+                query=f"severity: {severity}",
                 max_results=max_results,
                 similarity_threshold=0.5
             )

@@ -79,18 +79,13 @@ app.add_middleware(
 app.include_router(v1_router, prefix="/api/v1", tags=["v1"])
 
 
-@app.get("/")
-async def root():
+@app.get("/health")
+async def health_check():
     return {
         "message": os.getenv("APP_NAME", "Nuclei AI Agent Template Generator"),
         "version": os.getenv("APP_VERSION", "1.0.0"),
-        "status": "running"
+        "status": "running",
     }
-
-
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy"}
 
 
 if __name__ == "__main__":
@@ -104,6 +99,6 @@ if __name__ == "__main__":
         "app.main:app",
         host=host,
         port=port,
-        reload=debug,
+        reload=True,
         log_level=log_level
     )

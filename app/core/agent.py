@@ -340,16 +340,4 @@ Please provide a corrected version of the template that addresses these validati
     async def validate_template_content(self, template_content: str) -> ValidationResult:
         return await self.nuclei_runner.validate_template(template_content)
     
-    async def get_agent_status(self) -> Dict[str, Any]:
-        nuclei_available = await self.nuclei_runner.check_nuclei_available()
-        nuclei_version = await self.nuclei_runner.get_nuclei_version()
-        rag_stats = await self.rag_engine.get_collection_stats()
-        
-        return {
-            "nuclei_available": nuclei_available,
-            "nuclei_version": nuclei_version,
-            "rag_engine_initialized": self.rag_engine.initialized,
-            "rag_collection_stats": rag_stats,
-            "llm_model": self.model_name,
-            "config_loaded": bool(self.config)
-        }
+   

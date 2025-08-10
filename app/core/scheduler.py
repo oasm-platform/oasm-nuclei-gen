@@ -14,7 +14,6 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from app.core.agent import NucleiAgent
-from app.core.rag_engine import RAGEngine
 
 # Load environment variables
 load_dotenv()

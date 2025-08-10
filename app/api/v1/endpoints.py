@@ -2,28 +2,23 @@
 API v1 endpoints for Nuclei template generation and validation
 """
 import logging
-from typing import Dict, Any
 
 from fastapi import APIRouter, HTTPException, Depends, Request
 
 from app.core.agent import NucleiAgent
 from app.api.v1.v1_dto import (
+    GetRagStats,
+    GetTemplatesBySeverityResponse,
     TemplateGenerationRequest,
     TemplateGenerationResponse,
     TemplateValidationRequest,
     TemplateValidationResponse,
     RAGSearchRequest,
     RAGSearchResponse,
-    UpdateRAGDataRequest,
-    UpdateRAGDataResponse,
     ErrorResponse,
-    GetTemplatesBySeverityResponse,
-    GetAgentStatusResponse,
-    GetRAGStatsResponse,
     GetTemplatesByTagsResponse,
     ReloadTemplatesResponse,
     ClearRAGCollectionResponse,
-    SystemInfo
 )
 
 
@@ -45,16 +40,6 @@ async def get_templates_by_severity(
 ) -> GetTemplatesBySeverityResponse:
     """
     Retrieve Nuclei templates filtered by security severity level.
-    
-    Args:
-        severity: Security severity level (critical, high, medium, low, info)
-        max_results: Maximum number of templates to return (default: 10)
-        
-    Returns:
-        Dict containing severity level, matching templates array, and total count
-        
-    Raises:
-        HTTPException: If RAG engine initialization fails or template search encounters errors
     """
     try:
         if not agent.rag_engine.initialized:
@@ -81,101 +66,114 @@ async def get_templates_by_severity(
             ).model_dump()
         )
 
-@router.get("/agent_status")
-async def get_agent_status(
+@router.get("/templates/tags")
+async def get_templates_by_tags(
+    tags: list[str],
+    max_results: int = 10,
     agent: NucleiAgent = Depends(get_nuclei_agent)
-) -> GetAgentStatusResponse:
+) -> GetTemplatesByTagsResponse:
     """
-    Get the current health status and configuration of the Nuclei agent.
+    Retrieve Nuclei templates filtered by specified tags.
     
-    Returns:
-        Dict containing agent status (healthy/degraded/error) and detailed system information
-        including Nuclei availability, RAG engine status, and configuration details
-        
-    Note:
-        This endpoint does not raise exceptions but returns error status in response body
+    Searches the RAG collection for templates that contain any of the specified
+    tags in their metadata.
     """
     try:
-        logger.info("Getting agent status...")
-        status = await agent.get_agent_status()
-        logger.info(f"Agent status received: {list(status.keys())}")
+        if not agent.rag_engine.initialized:
+            await agent.rag_engine.initialize()
         
-        # Extract templates count from rag_collection_stats if available
-        rag_stats = status.get("rag_collection_stats", {})
-        templates_count = None
-        if isinstance(rag_stats, dict) and "total_documents" in rag_stats:
-            templates_count = rag_stats["total_documents"]
-        
-        # Create SystemInfo with proper field mapping
-        logger.info("Creating SystemInfo object...")
-        system_info = SystemInfo(
-            nuclei_version=status.get("nuclei_version"),
-            nuclei_available=status.get("nuclei_available", False),
-            rag_initialized=status.get("rag_engine_initialized", False),  # Map field name
-            templates_count=templates_count,
-            last_update=None  # Could be extracted from metadata if available
+        templates = await agent.rag_engine.get_templates_by_tags(
+            tags=tags,
+            max_results=max_results
         )
-        logger.info(f"SystemInfo created: {system_info.model_dump()}")
         
-        logger.info("Creating GetAgentStatusResponse...")
-        response = GetAgentStatusResponse(
-            status="healthy" if status.get("nuclei_available", False) else "degraded",
-            details=system_info
+        return GetTemplatesByTagsResponse(
+            tags=tags,
+            templates=templates,
+            total_results=len(templates)
         )
-        logger.info("GetAgentStatusResponse created successfully")
+        
+    except Exception as e:
+        logger.error(f"Error getting templates by tags: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=ErrorResponse(
+                error="Internal server error during template search",
+                details={"exception": str(e)}
+            ).model_dump()
+        )
+
+@router.get("/search_templates", response_model=RAGSearchResponse)
+async def search_templates(
+    request_data: RAGSearchRequest,
+    agent: NucleiAgent = Depends(get_nuclei_agent)
+) -> RAGSearchResponse:
+    """
+    Search for similar Nuclei templates using semantic similarity matching.
+    
+    Performs vector-based similarity search in the RAG collection to find
+    templates that are semantically similar to the provided query.
+    """
+    try:
+        logger.info(f"Template search request: {request_data.query}")
+        
+        # Initialize RAG engine if needed
+        if not agent.rag_engine.initialized:
+            await agent.rag_engine.initialize()
+        
+        # Search for similar templates
+        results = await agent.rag_engine.retrieve_similar_templates(
+            query=request_data.query,
+            max_results=request_data.max_results,
+            similarity_threshold=request_data.similarity_threshold
+        )
+        
+        response = RAGSearchResponse(
+            results=results,
+            query=request_data.query,
+            total_results=len(results)
+        )
+        
+        logger.info(f"Template search completed: {len(results)} results found")
         return response
         
     except Exception as e:
-        logger.error(f"Error getting agent status: {e}")
-        import traceback
-        logger.error(f"Full traceback: {traceback.format_exc()}")
-        
-        # Create error response with required fields
-        logger.info("Creating error SystemInfo...")
-        error_system_info = SystemInfo(
-            nuclei_version=None,
-            nuclei_available=False,
-            rag_initialized=False,
-            templates_count=None,
-            last_update=None
+        logger.error(f"Error in search_templates endpoint: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=ErrorResponse(
+                error="Internal server error during template search",
+                details={"exception": str(e)}
+            ).model_dump()
         )
-        
-        logger.info("Creating error GetAgentStatusResponse...")
-        return GetAgentStatusResponse(
-            status="error",
-            details=error_system_info,
-            timestamp=None
-        )
+
 
 
 @router.get("/rag_stats")
 async def get_rag_stats(
     agent: NucleiAgent = Depends(get_nuclei_agent)
-) -> GetRAGStatsResponse:
+) -> GetRagStats:
     """
     Retrieve statistics and metadata about the RAG (Retrieval-Augmented Generation) collection.
-    
-    Returns:
-        Dict containing collection statistics such as total templates count, 
-        embedding dimensions, index status, and collection metadata
-        
-    Raises:
-        Returns error dict if RAG engine initialization fails or stats retrieval encounters errors
     """
     try:
         if not agent.rag_engine.initialized:
             await agent.rag_engine.initialize()
         
         stats = await agent.rag_engine.get_collection_stats()
-        return GetRAGStatsResponse(
-            collection_stats=stats
+        return GetRagStats(
+            total_documents=stats.get("total_documents", 0),
+            collection_name=stats.get("collection_name", "")
         )
         
     except Exception as e:
         logger.error(f"Error getting RAG stats: {e}")
-        return GetRAGStatsResponse(
-            collection_stats={},
-            error=str(e)
+        raise HTTPException(
+            status_code=500,
+            detail=ErrorResponse(
+                error="Internal server error during RAG stats retrieval",
+                details={"exception": str(e)}
+            ).model_dump()
         )
 
 
@@ -190,16 +188,6 @@ async def generate_template(
     
     Uses AI-powered template generation combined with RAG similarity search to create
     contextually relevant and syntactically valid Nuclei templates.
-    
-    Args:
-        request_data: TemplateGenerationRequest containing vulnerability description and options
-        
-    Returns:
-        TemplateGenerationResponse with generated template content, validation results,
-        and metadata including template ID and generation confidence
-        
-    Raises:
-        HTTPException: If template generation fails due to internal errors
     """
     try:
         logger.info(f"Template generation request: {request_data.vulnerability_description[:100]}...")
@@ -234,16 +222,6 @@ async def validate_template(
     
     Supports both YAML syntax validation and full Nuclei template validation
     depending on the validate_syntax_only flag in the request.
-    
-    Args:
-        request_data: TemplateValidationRequest with template content and validation options
-        
-    Returns:
-        TemplateValidationResponse containing validation results, error details,
-        and extracted template ID if available
-        
-    Raises:
-        HTTPException: If validation process encounters internal errors
     """
     try:
         logger.info("Template validation request received")
@@ -287,59 +265,6 @@ async def validate_template(
         )
 
 
-@router.post("/search_templates", response_model=RAGSearchResponse)
-async def search_templates(
-    request_data: RAGSearchRequest,
-    agent: NucleiAgent = Depends(get_nuclei_agent)
-) -> RAGSearchResponse:
-    """
-    Search for similar Nuclei templates using semantic similarity matching.
-    
-    Performs vector-based similarity search in the RAG collection to find
-    templates that are semantically similar to the provided query.
-    
-    Args:
-        request_data: RAGSearchRequest with search query, max results, and similarity threshold
-        
-    Returns:
-        RAGSearchResponse containing matching templates ranked by similarity score,
-        original query, and total results count
-        
-    Raises:
-        HTTPException: If RAG engine initialization fails or search encounters errors
-    """
-    try:
-        logger.info(f"Template search request: {request_data.query}")
-        
-        # Initialize RAG engine if needed
-        if not agent.rag_engine.initialized:
-            await agent.rag_engine.initialize()
-        
-        # Search for similar templates
-        results = await agent.rag_engine.retrieve_similar_templates(
-            query=request_data.query,
-            max_results=request_data.max_results,
-            similarity_threshold=request_data.similarity_threshold
-        )
-        
-        response = RAGSearchResponse(
-            results=results,
-            query=request_data.query,
-            total_results=len(results)
-        )
-        
-        logger.info(f"Template search completed: {len(results)} results found")
-        return response
-        
-    except Exception as e:
-        logger.error(f"Error in search_templates endpoint: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=ErrorResponse(
-                error="Internal server error during template search",
-                details={"exception": str(e)}
-            ).model_dump()
-        )
 
 
 
@@ -352,12 +277,6 @@ async def reload_templates(
     
     Refreshes the in-memory template collection by re-indexing all available
     Nuclei templates from the configured template sources.
-    
-    Returns:
-        Dict containing success status, number of templates reloaded, and status message
-        
-    Raises:
-        HTTPException: If template reload process fails due to internal errors
     """
     try:
         logger.info("Template reload request received")
@@ -383,117 +302,6 @@ async def reload_templates(
 
 
 
-@router.post("/templates/tags")
-async def get_templates_by_tags(
-    tags: list[str],
-    max_results: int = 10,
-    agent: NucleiAgent = Depends(get_nuclei_agent)
-) -> GetTemplatesByTagsResponse:
-    """
-    Retrieve Nuclei templates filtered by specified tags.
-    
-    Searches the RAG collection for templates that contain any of the specified
-    tags in their metadata.
-    
-    Args:
-        tags: List of tag strings to filter templates by
-        max_results: Maximum number of templates to return (default: 10)
-        
-    Returns:
-        Dict containing search tags, matching templates array, and total count
-        
-    Raises:
-        HTTPException: If RAG engine initialization fails or tag search encounters errors
-    """
-    try:
-        if not agent.rag_engine.initialized:
-            await agent.rag_engine.initialize()
-        
-        templates = await agent.rag_engine.get_templates_by_tags(
-            tags=tags,
-            max_results=max_results
-        )
-        
-        return GetTemplatesByTagsResponse(
-            tags=tags,
-            templates=templates,
-            total_results=len(templates)
-        )
-        
-    except Exception as e:
-        logger.error(f"Error getting templates by tags: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=ErrorResponse(
-                error="Internal server error during template search",
-                details={"exception": str(e)}
-            ).model_dump()
-        )
-
-
-@router.put("/update_rag_data", response_model=UpdateRAGDataResponse)
-async def update_rag_data(
-    agent: NucleiAgent = Depends(get_nuclei_agent)
-) -> UpdateRAGDataResponse:
-    """
-    Update RAG collection by downloading latest templates and rebuilding the vector index.
-    
-    Performs a comprehensive update of the RAG data by:
-    1. Clearing existing collection
-    2. Downloading latest Nuclei templates
-    3. Processing and indexing new templates
-    4. Building vector embeddings
-    
-    Returns:
-        UpdateRAGDataResponse containing operation status, templates processed counts,
-        and detailed metadata about the update process
-        
-    Raises:
-        HTTPException: If RAG data update process fails due to internal errors
-    """
-    try:
-        logger.info("RAG data update request received")
-        
-        # Initialize RAG engine if needed
-        if not agent.rag_engine.initialized:
-            await agent.rag_engine.initialize()
-        
-        # Perform the RAG data update
-        result = await agent.rag_engine.vector_db.update_rag_data(
-            rag_data_path="rag_data"
-        )
-        
-        # Create response based on result
-        response = UpdateRAGDataResponse(
-            success=result["status"] in ["success", "partial_failure"],
-            message=result["message"],
-            templates_cleared=result.get("templates_cleared", 0),
-            templates_downloaded=result.get("templates_downloaded", 0),
-            templates_loaded=result.get("templates_loaded", 0),
-            metadata={
-                "status": result["status"],
-                "steps": result.get("steps", []),
-            }
-        )
-        
-        if result["status"] == "success":
-            logger.info(f"RAG data update completed successfully: {result['templates_loaded']} templates loaded")
-        elif result["status"] == "partial_failure":
-            logger.warning(f"RAG data update completed with warnings: {result['message']}")
-        else:
-            logger.error(f"RAG data update failed: {result['message']}")
-        
-        return response
-        
-    except Exception as e:
-        logger.error(f"Error in update_rag_data endpoint: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=ErrorResponse(
-                error="Internal server error during RAG data update",
-                details={"exception": str(e)}
-            ).model_dump()
-        )
 
 
 
@@ -506,12 +314,6 @@ async def clear_rag_collection(
     
     Completely removes all stored templates, vector embeddings, and metadata
     from the RAG collection, effectively resetting it to an empty state.
-    
-    Returns:
-        Dict containing operation status, collection name, and success/error details
-        
-    Note:
-        This endpoint does not raise exceptions but returns error status in response body
     """
     try:
         logger.info("Collection clear request received")
