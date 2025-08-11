@@ -17,7 +17,13 @@ services:
       - nuclei_network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:${CHROMADB_PORT}/api/v1/heartbeat"]
+      test:
+        [
+          "CMD",
+          "curl",
+          "-f",
+          "http://localhost:${CHROMADB_PORT}/api/v1/heartbeat",
+        ]
       interval: 30s
       timeout: 10s
       retries: 5
