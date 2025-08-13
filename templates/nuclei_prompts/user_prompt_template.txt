@@ -1,31 +1,46 @@
 Generate a Nuclei template based on the following requirements:
 
 ## Vulnerability Information:
-**Description**: {vulnerability_description}
-**Severity**: {severity}
-**Target URL**: {target_url}
-**HTTP Method**: {http_method}
-**Parameters**: {parameters}
-
-## Additional Context:
-{additional_context}
+**Description**: {prompt}
 
 ## Similar Templates Found:
 {retrieval_context}
 
-## Requirements:
-1. Create a complete, valid Nuclei template in YAML format
-2. Use the vulnerability description to determine the appropriate detection logic
-3. Reference similar templates from the context to ensure consistency
-4. Include proper metadata (author, tags, references if available)
-5. Implement reliable matchers that minimize false positives
-6. Follow Nuclei v3 syntax standards
+## CRITICAL REQUIREMENTS:
+1. Output ONLY valid YAML content - no explanations, no markdown formatting
+2. Start with 'id:' as the first line
+3. Follow exact Nuclei v3 YAML structure
+4. Use proper YAML indentation (2 spaces)
+5. All strings with special characters MUST be quoted
+6. Use | or > for multiline strings when needed
 
-## Template Specifications:
-- Template ID should be descriptive and follow naming conventions
-- Include comprehensive info section with proper classification
-- Use appropriate HTTP request structure for the vulnerability type
-- Implement effective matchers based on the vulnerability characteristics
-- Add relevant tags for categorization
+## Template Structure (MANDATORY):
+```
+id: template-name
+info:
+  name: "Template Name"
+  author: author-name
+  severity: high|medium|low|info
+  description: "Description here"
+  tags: tag1,tag2,tag3
+  classification:
+    cvss-score: X.X
+    cwe-id: CWE-XXX
+requests:
+  - method: GET|POST
+    path:
+      - "{{BaseURL}}/path"
+    headers:
+      Header-Name: "value"
+    body: |
+      body content here
+    matchers-condition: and|or
+    matchers:
+      - type: word|status|regex
+        words:
+          - "string1"
+          - "string2"
+        condition: and|or
+```
 
-Please generate the template with clear comments explaining the detection logic and any special considerations.
+Generate ONLY the YAML template without any explanations or markdown blocks.

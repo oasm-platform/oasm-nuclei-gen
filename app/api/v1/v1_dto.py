@@ -16,14 +16,6 @@ class SeverityLevel(str, Enum):
     CRITICAL = "critical"
 
 
-class TemplateMethod(str, Enum):
-    GET = "GET"
-    POST = "POST"
-    PUT = "PUT"
-    DELETE = "DELETE"
-    PATCH = "PATCH"
-    HEAD = "HEAD"
-    OPTIONS = "OPTIONS"
 
 
 # Request DTOs
@@ -76,6 +68,36 @@ class GetTemplatesBySeverityResponse(BaseModel):
 
 
 
+# System status DTOs
+class SystemInfo(BaseModel):
+    nuclei_version: Optional[str] = Field(None, description="Nuclei version")
+    nuclei_available: bool = Field(..., description="Whether Nuclei is available")
+    rag_initialized: bool = Field(..., description="Whether RAG engine is initialized")
+    templates_count: Optional[int] = Field(None, description="Number of loaded templates")
+    last_update: Optional[str] = Field(None, description="Last update timestamp")
+
+
+class GetAgentStatusResponse(BaseModel):
+    status: str = Field(..., description="Overall system status")
+    details: SystemInfo = Field(..., description="Detailed system information")
+    timestamp: Optional[str] = Field(None, description="Status check timestamp")
+
+
+class CollectionStats(BaseModel):
+    collection_name: str = Field(..., description="Collection name")
+    total_documents: int = Field(..., ge=0, description="Total number of documents")
+    embedding_dimension: Optional[int] = Field(None, description="Embedding dimension")
+    last_updated: Optional[str] = Field(None, description="Last update timestamp")
+    index_status: Optional[str] = Field(None, description="Index status")
+    metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
+
+
+class GetRAGStatsResponse(BaseModel):
+    collection_name: str = Field(..., description="Collection name")
+    total_documents: int = Field(..., ge=0, description="Total number of documents")
+
+
+# Legacy DTO for backward compatibility
 class GetRagStats(BaseModel):
     total_documents: int = Field(..., ge=0, description="Total number of documents")
     collection_name: str = Field(..., description="Collection name")
@@ -132,84 +154,15 @@ class ValidationResult(BaseModel):
 class ErrorResponse(BaseModel):
     error: str = Field(..., description="Error message")
     details: Optional[Dict[str, Any]] = Field(None, description="Error details")
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
 
 
-class NucleiInfo(BaseModel):
-    name: str = Field(..., description="Template name")
-    author: List[str] = Field(..., description="Template authors")
-    severity: SeverityLevel = Field(..., description="Vulnerability severity")
-    description: str = Field(..., description="Vulnerability description")
-    reference: Optional[List[str]] = Field(None, description="References")
-    classification: Optional[Dict[str, Any]] = Field(None, description="Classification info")
-    metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
-    tags: Optional[List[str]] = Field(None, description="Template tags")
 
 
-class HttpRequest(BaseModel):
-    method: TemplateMethod = Field(default=TemplateMethod.GET)
-    path: List[str] = Field(..., description="Request paths")
-    headers: Optional[Dict[str, str]] = Field(None, description="HTTP headers")
-    body: Optional[str] = Field(None, description="Request body")
-    raw: Optional[List[str]] = Field(None, description="Raw HTTP requests")
-
-
-class Matcher(BaseModel):
-    type: str = Field(..., description="Matcher type (word, regex, status, etc.)")
-    words: Optional[List[str]] = Field(None, description="Words to match")
-    regex: Optional[List[str]] = Field(None, description="Regex patterns")
-    status: Optional[List[int]] = Field(None, description="Status codes")
-    condition: Optional[str] = Field(None, description="Matching condition")
-    part: Optional[str] = Field(None, description="Part to match (body, header, etc.)")
-    case_insensitive: Optional[bool] = Field(None, description="Case insensitive matching")
-
-
-class Extractor(BaseModel):
-    type: str = Field(..., description="Extractor type")
-    regex: Optional[List[str]] = Field(None, description="Regex patterns")
-    part: Optional[str] = Field(None, description="Part to extract from")
-    group: Optional[int] = Field(None, description="Regex group")
-
-
-class NucleiTemplate(BaseModel):
-    id: str = Field(..., description="Template ID")
-    info: NucleiInfo = Field(..., description="Template info")
-    http: Optional[List[HttpRequest]] = Field(None, description="HTTP requests")
-    variables: Optional[Dict[str, Any]] = Field(None, description="Template variables")
-    matchers: Optional[List[Matcher]] = Field(None, description="Response matchers")
-    extractors: Optional[List[Extractor]] = Field(None, description="Data extractors")
-    matchers_condition: Optional[str] = Field(None, description="Matchers condition")
-
-
-class TargetInfo(BaseModel):
-    url: str = Field(..., description="Target URL", min_length=1, max_length=2000)
-    method: TemplateMethod = Field(default=TemplateMethod.GET)
-    parameters: Optional[List[str]] = Field(None, description="URL/form parameters")
-    headers: Optional[Dict[str, str]] = Field(None, description="Additional headers")
-    cookies: Optional[Dict[str, str]] = Field(None, description="Cookies")
-
-    @field_validator('url')
-    @classmethod
-    def validate_url(cls, v):
-        if not v or len(v.strip()) == 0:
-            raise ValueError('URL cannot be empty')
-        
-        v = v.strip()
-        
-        # Basic URL validation
-        if not (v.startswith('http://') or v.startswith('https://')):
-            raise ValueError('URL must start with http:// or https://')
-        
-        return v
 
 
 class TemplateGenerationRequest(BaseModel):
-    vulnerability_description: str = Field(..., min_length=10, max_length=1000, description="Description of the vulnerability")
-    target_info: TargetInfo = Field(..., description="Target information")
-    severity: SeverityLevel = Field(..., description="Vulnerability severity")
-    tags: Optional[List[str]] = Field(None, description="Template tags")
-    author: Optional[str] = Field(None, description="Template author")
-    references: Optional[List[str]] = Field(None, description="References")
+    prompt: str = Field(..., min_length=10, max_length=2000, description="Text prompt describing the vulnerability or security test")
 
 
 class TemplateGenerationResponse(BaseModel):
@@ -222,32 +175,6 @@ class TemplateGenerationResponse(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
-class TemplateValidationRequest(BaseModel):
-    template_content: str = Field(..., min_length=10, max_length=50000, description="YAML template content")
-    validate_syntax_only: bool = Field(default=False, description="Only validate YAML syntax")
-
-    @field_validator('template_content')
-    @classmethod
-    def validate_template_content(cls, v):
-        if not v or len(v.strip()) == 0:
-            raise ValueError('Template content cannot be empty')
-        
-        v = v.strip()
-        
-        # Basic YAML structure validation
-        if not v.startswith('id:') and 'id:' not in v:
-            raise ValueError('Template must contain an "id" field')
-        
-        if not v.startswith('info:') and 'info:' not in v:
-            raise ValueError('Template must contain an "info" field')
-        
-        return v
-
-
-class TemplateValidationResponse(BaseModel):
-    validation_result: ValidationResult = Field(..., description="Validation result")
-    template_id: Optional[str] = Field(None, description="Extracted template ID")
-    validated_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 class RAGSearchRequest(BaseModel):

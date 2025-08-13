@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
-from app.core.agent import NucleiAgent
+from app.core.nuclei_service import NucleiTemplateService
 
 # Load environment variables
 load_dotenv()
@@ -57,15 +57,15 @@ class StandaloneRAGScheduler:
         try:
             logger.info("Starting scheduled RAG data update...")
             
-            # Create NucleiAgent instance for the scheduled task
-            nuclei_agent = NucleiAgent()
+            # Create NucleiTemplateService instance for the scheduled task
+            nuclei_service = NucleiTemplateService()
             
             # Initialize RAG engine if needed
-            if not nuclei_agent.rag_engine.initialized:
-                await nuclei_agent.rag_engine.initialize()
+            if not nuclei_service.rag_engine.initialized:
+                await nuclei_service.rag_engine.initialize()
             
             # Perform the RAG data update
-            result = await nuclei_agent.rag_engine.vector_db.update_rag_data(
+            result = await nuclei_service.rag_engine.vector_db.update_rag_data(
                 rag_data_path="rag_data"
             )
             

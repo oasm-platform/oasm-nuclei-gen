@@ -1,20 +1,22 @@
-# Nuclei AI Agent Template Generator (OASM AI Agent Gen Template Nuclei)
+# Nuclei Template Generator (LLM + RAG)
 
-![Nuclei AI Agent](https://img.shields.io/badge/Nuclei-AI%20Agent-blue?style=for-the-badge&logo=ai)
-![LangChain](https://img.shields.io/badge/LangChain-Powered-green?style=for-the-badge)
+![Nuclei Generator](https://img.shields.io/badge/Nuclei-Template%20Generator-blue?style=for-the-badge&logo=ai)
+![LLM](https://img.shields.io/badge/LLM-Powered-green?style=for-the-badge)
 ![Python](https://img.shields.io/badge/Python-3.8+-blue?style=for-the-badge&logo=python)
 
 ## 📖 Project Description
 
-The Nuclei AI Agent Template Generator is an AI system that automates the creation and validation of Nuclei templates for cybersecurity testing purposes. This project leverages advanced AI technology with LangChain and RAG (Retrieval Augmented Generation) to generate high-quality templates based on knowledge from existing template databases.
+The Nuclei Template Generator is a simplified AI system that automates the creation and validation of Nuclei templates for cybersecurity testing. This project uses direct LLM + RAG integration to generate high-quality templates based on knowledge from existing template databases, without the complexity of an agent pattern.
 
 ### 🎯 Key Features
 
-- **Automated Nuclei Template Generation**: Uses AI to create templates based on vulnerability descriptions
+- **Direct LLM + RAG Integration**: Simplified architecture without agent complexity
+- **Automated Nuclei Template Generation**: Uses LLM to create templates based on vulnerability descriptions
 - **Automatic Validation**: Integrates `nuclei --validate` to check template validity
 - **RAG Engine**: Searches and references from existing template database
 - **RESTful API**: Provides easy-to-use interface
 - **Detailed Logging**: Monitors the entire template generation process
+- **Environment-based Configuration**: All settings via environment variables
 
 ## 📋 Reference Documentation
 
@@ -24,19 +26,18 @@ The Nuclei AI Agent Template Generator is an AI system that automates the creati
 ## 🏗️ Project Structure
 
 ```
-nuclei-ai-agent/
+nuclei-template-generator/
 ├── app/
-│   ├── main.py                    # Entry point of the application (Flask/FastAPI)
+│   ├── main.py                    # Entry point of the application (FastAPI)
 │   ├── core/
-│   │   ├── agent.py               # Logic of AI Agent (LangChain)
+│   │   ├── nuclei_service.py      # Main service using LLM + RAG
 │   │   ├── rag_engine.py          # Retrieval Augmented Generation (RAG)
-│   │   └── nuclei_runner.py       # Logic calling nuclei --validate
+│   │   ├── nuclei_runner.py       # Logic calling nuclei --validate
+│   │   └── scheduler.py           # Auto-update scheduler
 │   ├── api/
 │   │   └── v1/
-│   │       └── endpoints.py       # API endpoints (/generate_template)
-│   ├── models/
-│   │   ├── __init__.py
-│   │   └── template.py            # Pydantic models for Nuclei template
+│   │       ├── endpoints.py       # API endpoints
+│   │       └── v1_dto.py          # Pydantic models
 │   └── services/
 │       └── vector_db.py           # Connect and interact with vector database
 ├── templates/
@@ -218,27 +219,12 @@ python -m app.main
 POST /api/v1/generate_template
 
 {
-  "vulnerability_description": "SQL Injection in login form",
-  "target_info": {
-    "url": "https://example.com/login",
-    "method": "POST",
-    "parameters": ["username", "password"]
-  },
-  "severity": "high"
+  "prompt": "Create a Nuclei template for SQL injection vulnerability in a login form at https://example.com/login using POST method with username and password parameters. Severity: high"
 }
 ```
 
-#### 2. Validate Template
 
-```bash
-POST /api/v1/validate_template
-
-{
-  "template_content": "yaml_content_here"
-}
-```
-
-#### 3. Update RAG Data (New)
+#### 2. Update RAG Data
 
 ```bash
 POST /api/v1/update_rag_data
@@ -258,25 +244,25 @@ This endpoint replaces the old `ingest_data.py` script and provides:
 - Loading templates into the vector database
 - Configuration updates via API
 
-#### 4. Clear RAG Collection
+#### 3. Clear RAG Collection
 
 ```bash
 DELETE /api/v1/rag_collection
 ```
 
-#### 5. Reload Templates
+#### 4. Reload Templates
 
 ```bash
 POST /api/v1/reload_templates
 ```
 
-#### 6. Get RAG Statistics
+#### 5. Get RAG Statistics
 
 ```bash
 GET /api/v1/rag_stats
 ```
 
-#### 7. Search Templates
+#### 6. Search Templates
 
 ```bash
 POST /api/v1/search_templates
@@ -295,12 +281,7 @@ import requests
 
 # Generate template
 response = requests.post('http://localhost:8000/api/v1/generate_template', json={
-    "vulnerability_description": "XSS vulnerability in search parameter",
-    "target_info": {
-        "url": "https://target.com/search?q={{payload}}",
-        "method": "GET"
-    },
-    "severity": "medium"
+    "prompt": "Create a Nuclei template for XSS vulnerability in search parameter at https://target.com/search?q={{payload}} using GET method with medium severity"
 })
 
 template = response.json()
@@ -321,7 +302,7 @@ print(f"Templates loaded: {update_response.json()['templates_loaded']}")
 python -m app.core.agent --description "SSTI vulnerability" --url "https://example.com/template"
 ```
 
-## 🧠 AI Agent Architecture
+## 🧠 LLM + RAG Architecture
 
 ### Workflow Overview
 
@@ -334,10 +315,10 @@ python -m app.core.agent --description "SSTI vulnerability" --url "https://examp
 
 ### Core Components
 
-- **LangChain Agent**: Orchestrates workflow and uses tools
-- **RAG Engine**: ChromaDB/FAISS for storing and searching embeddings
+- **NucleiTemplateService**: Main service orchestrating LLM + RAG
+- **RAG Engine**: ChromaDB for storing and searching embeddings
 - **Nuclei Runner**: Wrapper to run nuclei CLI
-- **Template Parser**: Parse and validate YAML templates
+- **ConfigService**: Environment-based configuration management
 
 ## 🔧 Advanced Configuration
 

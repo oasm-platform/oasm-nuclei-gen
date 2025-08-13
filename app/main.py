@@ -1,5 +1,5 @@
 """
-Main entry point of the Nuclei AI Agent Template Generator
+Main entry point of the Nuclei Template Generator (LLM + RAG)
 """
 import logging
 import os
@@ -12,7 +12,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.endpoints import router as v1_router
-from app.core.rag_engine import RAGEngine
+from app.core.nuclei_service import NucleiTemplateService
 
 # Load environment variables
 load_dotenv()
@@ -44,26 +44,26 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Starting Nuclei AI Agent Template Generator")
+    logger.info("Starting Nuclei Template Generator (LLM + RAG)")
     
-    # Initialize RAG engine
+    # Initialize Nuclei Template Service
     try:
-        rag_engine = RAGEngine()
-        await rag_engine.initialize()
-        app.state.rag_engine = rag_engine
-        logger.info("RAG engine initialized successfully")
+        nuclei_service = NucleiTemplateService()
+        await nuclei_service.rag_engine.initialize()
+        app.state.nuclei_service = nuclei_service
+        logger.info("Nuclei Template Service initialized successfully")
     except Exception as e:
-        logger.error(f"Failed to initialize RAG engine: {e}")
+        logger.error(f"Failed to initialize Nuclei Template Service: {e}")
         raise
     
     yield
     
-    logger.info("Shutting down Nuclei AI Agent Template Generator")
+    logger.info("Shutting down Nuclei Template Generator")
 
 
 app = FastAPI(
-    title=os.getenv("APP_NAME", "Nuclei AI Agent Template Generator"),
-    description="AI-powered Nuclei template generation and validation service",
+    title=os.getenv("APP_NAME", "Nuclei Template Generator"),
+    description="LLM + RAG powered Nuclei template generation and validation service",
     version=os.getenv("APP_VERSION", "1.0.0"),
     lifespan=lifespan
 )
@@ -81,10 +81,13 @@ app.include_router(v1_router, prefix="/api/v1", tags=["v1"])
 
 @app.get("/health")
 async def health_check():
+    stats = await app.state.nuclei_service.rag_engine.get_collection_stats()
     return {
-        "message": os.getenv("APP_NAME", "Nuclei AI Agent Template Generator"),
+        "message": os.getenv("APP_NAME", "Nuclei Template Generator"),
         "version": os.getenv("APP_VERSION", "1.0.0"),
-        "status": "running",
+        "status": "healthy",
+        "collection_name": stats.get("collection_name", ""),
+        "total_documents": stats.get("total_documents", 0)
     }
 
 

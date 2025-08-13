@@ -1,5 +1,6 @@
 """
-AI Agent for generating Nuclei templates using LangChain and RAG
+Nuclei Template Service - Simplified service using LLM + RAG directly
+This replaces the complex Agent pattern with a simpler approach
 """
 import logging
 import os
@@ -8,6 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 import yaml
+import tempfile
 from dotenv import load_dotenv
 
 from langchain.schema import HumanMessage, SystemMessage
@@ -19,31 +21,25 @@ from app.core.nuclei_runner import NucleiRunner
 from app.api.v1.v1_dto import (
     TemplateGenerationRequest,
     TemplateGenerationResponse,
-    ValidationResult
+    ValidationResult,
+    RAGSearchRequest
 )
 
 
 logger = logging.getLogger(__name__)
 
 
-class NucleiAgent:
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
-        # Load environment variables
+class ConfigService:
+    """Configuration service to load settings from environment variables"""
+    
+    @staticmethod
+    def load_config() -> Dict[str, Any]:
+        """Load configuration from environment variables"""
         load_dotenv()
         
-        self.config = config or self._load_config_from_env()
-        self.rag_engine = RAGEngine(self.config)
-        self.nuclei_runner = NucleiRunner(self.config.get("nuclei", {}))
-        self.llm = self._initialize_llm()
-        self.model_name = self._get_model_name()
-        self.system_prompt = self._load_system_prompt()
-        self.user_prompt_template = self._load_user_prompt_template()
-        
-    def _load_config_from_env(self) -> Dict[str, Any]:
-        """Load configuration from environment variables"""
         return {
             "app": {
-                "name": os.getenv("APP_NAME", "Nuclei AI Agent Template Generator"),
+                "name": os.getenv("APP_NAME", "Nuclei Template Generator"),
                 "version": os.getenv("APP_VERSION", "1.0.0"),
                 "debug": os.getenv("APP_DEBUG", "false").lower() == "true",
                 "host": os.getenv("APP_HOST", "0.0.0.0"),
@@ -58,8 +54,9 @@ class NucleiAgent:
             },
             "vector_db": {
                 "type": os.getenv("VECTOR_DB_TYPE", "chromadb"),
-                "mode": os.getenv("VECTOR_DB_MODE", "persistent"),
-                "persist_directory": os.getenv("VECTOR_DB_PERSIST_DIRECTORY", "./chroma_db"),
+                "mode": os.getenv("VECTOR_DB_MODE", "client"),
+                "host": os.getenv("VECTOR_DB_HOST", "localhost"),
+                "port": int(os.getenv("VECTOR_DB_PORT", "8001")),
                 "collection_name": os.getenv("VECTOR_DB_COLLECTION_NAME", "nuclei_templates"),
                 "embedding_model": os.getenv("VECTOR_DB_EMBEDDING_MODEL", "all-MiniLM-L6-v2"),
                 "chunk_size": int(os.getenv("VECTOR_DB_CHUNK_SIZE", "1000")),
@@ -81,27 +78,22 @@ class NucleiAgent:
                 "validation_required": os.getenv("TEMPLATE_VALIDATION_REQUIRED", "true").lower() == "true",
                 "output_format": os.getenv("TEMPLATE_OUTPUT_FORMAT", "yaml"),
                 "include_metadata": os.getenv("TEMPLATE_INCLUDE_METADATA", "true").lower() == "true"
-            },
-            "logging": {
-                "level": os.getenv("LOG_LEVEL", "INFO"),
-                "format": os.getenv("LOG_FORMAT", "%(asctime)s - %(name)s - %(levelname)s - %(message)s"),
-                "file_path": os.getenv("LOG_FILE_PATH", "logs/app.log"),
-                "max_bytes": int(os.getenv("LOG_MAX_BYTES", "10485760")),
-                "backup_count": int(os.getenv("LOG_BACKUP_COUNT", "5"))
-            },
-            "security": {
-                "rate_limit_requests_per_minute": int(os.getenv("RATE_LIMIT_REQUESTS_PER_MINUTE", "60")),
-                "rate_limit_burst_size": int(os.getenv("RATE_LIMIT_BURST_SIZE", "10")),
-                "max_prompt_length": int(os.getenv("MAX_PROMPT_LENGTH", "1000")),
-                "allowed_file_types": os.getenv("ALLOWED_FILE_TYPES", ".yaml,.yml").split(",")
-            },
-            "performance": {
-                "max_concurrent_requests": int(os.getenv("MAX_CONCURRENT_REQUESTS", "10")),
-                "request_timeout": int(os.getenv("REQUEST_TIMEOUT", "120")),
-                "cache_ttl": int(os.getenv("CACHE_TTL", "3600"))
             }
         }
+
+
+class NucleiTemplateService:
+    """Simple service that directly uses LLM + RAG for template generation"""
     
+    def __init__(self):
+        self.config = ConfigService.load_config()
+        self.rag_engine = RAGEngine(self.config)
+        self.nuclei_runner = NucleiRunner(self.config.get("nuclei", {}))
+        self.llm = self._initialize_llm()
+        self.model_name = self._get_model_name()
+        self.system_prompt = self._load_system_prompt()
+        self.user_prompt_template = self._load_user_prompt_template()
+        
     def _initialize_llm(self):
         """Initialize LLM from environment variables"""
         llm_config = self.config.get("llm", {})
@@ -134,29 +126,74 @@ class NucleiAgent:
                 openai_api_key=api_key
             )
     
-    def _load_system_prompt(self) -> str:
-        prompt_path = Path("templates/nuclei_prompts/system_prompt.txt")
-        if prompt_path.exists():
-            return prompt_path.read_text(encoding='utf-8')
-        return "You are an expert Nuclei template generator."
-    
     def _get_model_name(self) -> str:
         """Get the model name from configuration"""
         llm_config = self.config.get("llm", {})
-        provider = llm_config.get("provider", "openai")
+        provider = llm_config.get("provider", "gemini")
         if provider == "gemini":
             return llm_config.get("model", "gemini-2.0-flash-exp")
         else:
             return llm_config.get("model", "gpt-4")
     
+    def _load_system_prompt(self) -> str:
+        """Load system prompt from file or use default"""
+        prompt_path = Path("templates/nuclei_prompts/system_prompt.txt")
+        if prompt_path.exists():
+            return prompt_path.read_text(encoding='utf-8')
+        return "You are an expert Nuclei template generator. Generate valid YAML templates for security testing."
+    
     def _load_user_prompt_template(self) -> str:
+        """Load user prompt template from file or use default"""
         template_path = Path("templates/nuclei_prompts/user_prompt_template.txt")
         if template_path.exists():
             return template_path.read_text(encoding='utf-8')
-        return "Generate a Nuclei template for: {vulnerability_description}"
+        return """Generate a Nuclei template based on the following request:
+
+{prompt}
+
+Similar templates for reference:
+{retrieval_context}
+
+Please generate a complete, valid YAML Nuclei template that tests for the described vulnerability or security issue."""
+
+    async def get_system_status(self) -> Dict[str, Any]:
+        """Get system status information"""
+        nuclei_available = await self.nuclei_runner.check_nuclei_available()
+        nuclei_version = await self.nuclei_runner.get_nuclei_version()
+        rag_stats = await self.rag_engine.get_collection_stats()
+        
+        return {
+            "nuclei_available": nuclei_available,
+            "nuclei_version": nuclei_version,
+            "rag_engine_initialized": self.rag_engine.initialized,
+            "rag_collection_stats": rag_stats,
+            "llm_model": self.model_name,
+            "config_loaded": bool(self.config)
+        }
+
+    async def search_templates(
+        self, 
+        query: str, 
+        max_results: int = 5, 
+        similarity_threshold: float = 0.7
+    ) -> List[Dict[str, Any]]:
+        """Search for similar templates using RAG"""
+        if not self.rag_engine.initialized:
+            await self.rag_engine.initialize()
+        
+        return await self.rag_engine.retrieve_similar_templates(
+            query=query,
+            max_results=max_results,
+            similarity_threshold=similarity_threshold
+        )
+
+    async def validate_template(self, template_content: str) -> ValidationResult:
+        """Validate a template using Nuclei runner"""
+        return await self.nuclei_runner.validate_template(template_content)
     
     async def generate_template(self, request: TemplateGenerationRequest) -> TemplateGenerationResponse:
-        logger.info(f"Starting template generation for: {request.vulnerability_description[:100]}...")
+        """Generate a Nuclei template using LLM + RAG"""
+        logger.info(f"Starting template generation for: {request.prompt[:100]}...")
         
         try:
             # Initialize RAG engine if needed
@@ -165,8 +202,8 @@ class NucleiAgent:
             
             # Retrieve similar templates for context
             similar_templates = await self.rag_engine.retrieve_similar_templates(
-                query=request.vulnerability_description,
-                max_results=5
+                query=request.prompt,
+                max_results=self.config.get("rag", {}).get("max_retrieved_docs", 5)
             )
             
             # Format retrieval context
@@ -177,6 +214,8 @@ class NucleiAgent:
             generated_template = None
             validation_result = None
             
+            last_validation_result = None
+            
             for attempt in range(max_retries):
                 try:
                     generated_template = await self._generate_template_content(request, retrieval_context)
@@ -184,6 +223,7 @@ class NucleiAgent:
                     # Validate the generated template
                     if self.config.get("template_generation", {}).get("validation_required", True):
                         validation_result = await self.nuclei_runner.validate_template(generated_template)
+                        last_validation_result = validation_result
                         
                         if validation_result.is_valid:
                             break
@@ -196,17 +236,30 @@ class NucleiAgent:
                                     validation_result, 
                                     request
                                 )
+                            else:
+                                # Last attempt failed, set template to None
+                                generated_template = None
                     else:
                         validation_result = ValidationResult(is_valid=True, errors=[], warnings=[])
+                        last_validation_result = validation_result
                         break
                         
                 except Exception as e:
                     logger.error(f"Template generation attempt {attempt + 1} failed: {e}")
+                    last_validation_result = ValidationResult(
+                        is_valid=False, 
+                        errors=[f"Generation attempt {attempt + 1} failed: {str(e)}"], 
+                        warnings=[]
+                    )
                     if attempt == max_retries - 1:
-                        raise
+                        generated_template = None
             
-            if not generated_template:
-                raise Exception("Failed to generate valid template after all retries")
+            # Check if we have a valid template
+            if not generated_template or (last_validation_result and not last_validation_result.is_valid):
+                error_msg = "Failed to generate valid template after all retries"
+                if last_validation_result:
+                    error_msg += f". Last validation errors: {last_validation_result.errors}"
+                raise Exception(error_msg)
             
             # Extract template ID
             template_id = self._extract_template_id(generated_template)
@@ -222,8 +275,7 @@ class NucleiAgent:
                     "model": self.model_name,
                     "similar_templates_count": len(similar_templates),
                     "generation_attempts": attempt + 1,
-                    "request_severity": request.severity,
-                    "target_method": request.target_info.method
+                    "prompt_length": len(request.prompt)
                 }
             )
             
@@ -249,14 +301,10 @@ class NucleiAgent:
         request: TemplateGenerationRequest, 
         retrieval_context: str
     ) -> str:
+        """Generate template content using LLM"""
         # Format user prompt
         user_prompt = self.user_prompt_template.format(
-            vulnerability_description=request.vulnerability_description,
-            severity=request.severity,
-            target_url=request.target_info.url,
-            http_method=request.target_info.method,
-            parameters=", ".join(request.target_info.parameters or []),
-            additional_context=f"Tags: {', '.join(request.tags or [])}\nAuthor: {request.author or 'AI Agent'}\nReferences: {', '.join(request.references or [])}",
+            prompt=request.prompt,
             retrieval_context=retrieval_context
         )
         
@@ -270,34 +318,86 @@ class NucleiAgent:
         response = await self.llm.agenerate([messages])
         generated_content = response.generations[0][0].text.strip()
         
+        # Debug: Log raw LLM response
+        logger.debug(f"Raw LLM response:\n{generated_content}")
+        
         # Extract YAML from response (in case it's wrapped in markdown)
         yaml_content = self._extract_yaml_content(generated_content)
+        
+        # Debug: Log extracted YAML
+        logger.debug(f"Extracted YAML content:\n{yaml_content}")
+        
+        # Validate YAML syntax before returning
+        self._validate_yaml_syntax(yaml_content)
         
         return yaml_content
     
     def _extract_yaml_content(self, content: str) -> str:
+        """Extract YAML content from LLM response"""
         lines = content.split('\n')
         yaml_lines = []
         in_yaml_block = False
+        found_yaml_block = False
         
+        # First, try to find YAML code blocks
         for line in lines:
             if line.strip().startswith('```yaml') or line.strip().startswith('```yml'):
                 in_yaml_block = True
+                found_yaml_block = True
                 continue
             elif line.strip() == '```' and in_yaml_block:
+                in_yaml_block = False
                 break
-            elif in_yaml_block or (not any(line.strip().startswith(prefix) for prefix in ['```', '#', '**', '*'])):
+            elif in_yaml_block:
                 yaml_lines.append(line)
         
-        yaml_content = '\n'.join(yaml_lines).strip()
+        # If YAML block found, use it
+        if found_yaml_block and yaml_lines:
+            yaml_content = '\n'.join(yaml_lines).strip()
+        else:
+            # No YAML block found, try to extract YAML from the entire content
+            # Look for lines that start with YAML keys (id:, info:, requests:, etc.)
+            yaml_started = False
+            for line in lines:
+                line_stripped = line.strip()
+                # Skip markdown headers, explanations, etc.
+                if line_stripped.startswith('#') and not yaml_started:
+                    continue
+                if line_stripped.startswith('**') or line_stripped.startswith('*') and not yaml_started:
+                    continue
+                if line_stripped.startswith('```') and not line_stripped.startswith('```yaml'):
+                    continue
+                    
+                # Check for YAML structure start
+                if line_stripped.startswith(('id:', 'info:', 'variables:', 'requests:', 'http:', 'network:', 'file:')):
+                    yaml_started = True
+                    
+                if yaml_started:
+                    yaml_lines.append(line)
+            
+            yaml_content = '\n'.join(yaml_lines).strip()
         
-        # If no YAML block found, use the entire content
+        # If still no content, use the entire response as fallback
         if not yaml_content:
-            yaml_content = content
+            yaml_content = content.strip()
         
         return yaml_content
     
+    def _validate_yaml_syntax(self, yaml_content: str) -> None:
+        """Validate YAML syntax before nuclei validation"""
+        try:
+            yaml.safe_load(yaml_content)
+            logger.debug("YAML syntax validation passed")
+        except yaml.YAMLError as e:
+            logger.error(f"YAML syntax validation failed: {e}")
+            # Save problematic YAML to temp file for debugging
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+                f.write(yaml_content)
+                logger.error(f"Problematic YAML saved to: {f.name}")
+            raise ValueError(f"Generated content is not valid YAML: {e}")
+    
     def _extract_template_id(self, template_content: str) -> str:
+        """Extract template ID from generated content"""
         try:
             template_data = yaml.safe_load(template_content)
             return template_data.get("id", f"generated_{uuid.uuid4().hex[:8]}")
@@ -310,6 +410,7 @@ class NucleiAgent:
         validation_result: ValidationResult, 
         original_request: TemplateGenerationRequest
     ) -> str:
+        """Refine template based on validation errors"""
         refinement_prompt = f"""
 The generated Nuclei template has validation errors. Please fix the following issues:
 
@@ -324,7 +425,7 @@ Original Template:
 {template_content}
 ```
 
-Please provide a corrected version of the template that addresses these validation issues while maintaining the original functionality for detecting: {original_request.vulnerability_description}
+Please provide a corrected version of the template that addresses these validation issues while maintaining the original functionality for detecting: {original_request.prompt}
 """
         
         messages = [
@@ -335,9 +436,9 @@ Please provide a corrected version of the template that addresses these validati
         response = await self.llm.agenerate([messages])
         refined_content = response.generations[0][0].text.strip()
         
-        return self._extract_yaml_content(refined_content)
-    
-    async def validate_template_content(self, template_content: str) -> ValidationResult:
-        return await self.nuclei_runner.validate_template(template_content)
-    
-   
+        refined_yaml = self._extract_yaml_content(refined_content)
+        
+        # Debug: Log refined YAML
+        logger.debug(f"Refined YAML content:\n{refined_yaml}")
+        
+        return refined_yaml
