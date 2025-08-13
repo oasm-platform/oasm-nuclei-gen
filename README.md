@@ -84,7 +84,7 @@ oasm-nuclei-agent/
 ```bash
 # 1. Clone repository
 git clone https://github.com/oasm-platform/oasm-nuclei-gen.git
-cd oasm-nuclei-agent
+cd oasm-nuclei-gen
 
 # 2. Copy and configure environment
 cp .env.example .env
@@ -164,7 +164,7 @@ docker run -d --name nuclei_chromadb -p 8001:8000 chromadb/chroma:latest
 git clone https://github.com/projectdiscovery/nuclei-templates.git rag_data/nuclei_templates
 
 # Or use API endpoint after running the app
-# curl -X POST "http://localhost:8000/api/v1/update_rag_data" \
+# curl -X PUT "http://localhost:8000/api/v1/reload_template" \
 #   -H "Content-Type: application/json" \
 #   -d '{"force_update": true}'
 ```

@@ -12,7 +12,6 @@ services:
       - PERSIST_DIRECTORY=${PERSIST_DIRECTORY}
     volumes:
       - chromadb_data:/chroma/chroma
-      - ./config/chromadb:/chroma/config
     networks:
       - nuclei_network
     restart: unless-stopped
