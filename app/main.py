@@ -63,7 +63,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title=os.getenv("APP_NAME", "Nuclei Template Generator"),
-    description="LLM + RAG powered Nuclei template generation and validation service",
+    description="🕵️‍♂️ AI Genetate Template Nuclei For Cybersecurity Attack Surface Management (ASM).",
     version=os.getenv("APP_VERSION", "1.0.0"),
     lifespan=lifespan
 )
