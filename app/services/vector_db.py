@@ -7,8 +7,6 @@ from typing import List, Dict, Any, Optional
 import yaml
 import subprocess
 import shutil
-import asyncio
-
 import chromadb
 from chromadb.config import Settings
 import os
@@ -217,36 +215,57 @@ class VectorDBService:
         self,
         query: str,
         max_results: int = 5,
-        similarity_threshold: float = 0.7
+        similarity_threshold: float = 0.3
     ) -> List[Dict[str, Any]]:
         if not self.collection:
             raise RuntimeError("Vector database not initialized")
         
-        # Generate query embedding
-        if hasattr(self.embeddings, 'embed_query'):
-            query_embedding = self.embeddings.embed_query(query)
-        else:
-            query_embedding = self.embeddings.encode([query])[0].tolist()
-        
-        # Search collection
-        results = self.collection.query(
-            query_embeddings=[query_embedding],
-            n_results=max_results,
-            include=["documents", "metadatas", "distances"]
-        )
-        
-        # Filter by similarity threshold
-        filtered_results = []
-        for i, distance in enumerate(results["distances"][0]):
-            similarity = 1 - distance  # Convert distance to similarity
-            if similarity >= similarity_threshold:
-                filtered_results.append({
-                    "content": results["documents"][0][i],
-                    "metadata": results["metadatas"][0][i],
-                    "similarity": similarity
-                })
-        
-        return filtered_results
+        try:
+            logger.debug(f"Searching for query: '{query}' with max_results={max_results}, threshold={similarity_threshold}")
+            
+            # Check collection count first
+            count = self.collection.count()
+            logger.debug(f"Collection has {count} documents")
+            
+            if count == 0:
+                logger.warning("Collection is empty - no documents to search")
+                return []
+            
+            # Generate query embedding
+            if hasattr(self.embeddings, 'embed_query'):
+                query_embedding = self.embeddings.embed_query(query)
+            else:
+                query_embedding = self.embeddings.encode([query])[0].tolist()
+            
+            # Search collection
+            results = self.collection.query(
+                query_embeddings=[query_embedding],
+                n_results=min(max_results, count),  # Don't ask for more than available
+                include=["documents", "metadatas", "distances"]
+            )
+            
+            # Filter by similarity threshold
+            filtered_results = []
+            if results["distances"] and results["distances"][0]:
+                for i, distance in enumerate(results["distances"][0]):
+                    similarity = 1 - distance  # Convert distance to similarity
+                    
+                    if similarity >= similarity_threshold:
+                        result = {
+                            "content": results["documents"][0][i],
+                            "metadata": results["metadatas"][0][i],
+                            "similarity": similarity
+                        }
+                        filtered_results.append(result)
+            
+            logger.info(f"Search completed: {len(filtered_results)}/{len(results['documents'][0]) if results['documents'] else 0} results passed threshold")
+            
+            return filtered_results
+            
+        except Exception as e:
+            logger.error(f"Error during similarity search: {e}")
+            logger.error(f"Query: '{query}', max_results: {max_results}, threshold: {similarity_threshold}")
+            raise
     
     """
     Get collection statistics
@@ -309,34 +328,67 @@ class VectorDBService:
         try:
             with open(template_path, 'r', encoding='utf-8') as f:
                 template_content = f.read()
+                
+            # Skip empty files
+            if not template_content.strip():
+                logger.debug(f"Skipping empty file: {template_path}")
+                return None
+                
+            try:
                 template_data = yaml.safe_load(template_content)
+            except yaml.YAMLError as e:
+                logger.warning(f"Failed to parse YAML in {template_path}: {e}")
+                return None
+            
+            # Skip if not a valid template structure
+            if not isinstance(template_data, dict):
+                logger.debug(f"Skipping non-dict YAML in {template_path}")
+                return None
             
             # Extract template information
             template_id = template_data.get("id", template_path.stem)
             info = template_data.get("info", {})
+            
+            # Skip templates without proper info section or empty info
+            if not info or not isinstance(info, dict):
+                logger.debug(f"Skipping template without info section: {template_path}")
+                return None
+                
+            # Skip if no name in info (likely not a real template)
+            template_name = info.get("name", "").strip()
+            if not template_name:
+                logger.debug(f"Skipping template without name: {template_path}")
+                return None
             
             # Create document with ChromaDB-compatible metadata
             author = info.get("author", [])
             tags = info.get("tags", [])
             reference = info.get("reference", [])
             classification = info.get("classification", {})
+            severity = info.get("severity", "info")
+            description = info.get("description", "")
+            
+            # Ensure severity is valid
+            if severity not in ["info", "low", "medium", "high", "critical"]:
+                severity = "info"
             
             document = {
                 "id": template_id,
                 "content": template_content,
                 "metadata": {
                     "template_id": template_id,
-                    "name": info.get("name", ""),
-                    "author": ", ".join(author) if isinstance(author, list) else str(author),
-                    "severity": info.get("severity", ""),
-                    "description": info.get("description", ""),
-                    "tags": ", ".join(tags) if isinstance(tags, list) else str(tags),
-                    "reference": ", ".join(reference) if isinstance(reference, list) else str(reference),
+                    "name": template_name,
+                    "author": ", ".join(author) if isinstance(author, list) else str(author) if author else "Unknown",
+                    "severity": severity,
+                    "description": description if description else f"Template for {template_name}",
+                    "tags": ", ".join(tags) if isinstance(tags, list) else str(tags) if tags else "",
+                    "reference": ", ".join(reference) if isinstance(reference, list) else str(reference) if reference else "",
                     "file_path": str(template_path),
                     "classification": str(classification) if classification else "",
                 }
             }
             
+            logger.debug(f"Successfully loaded template: {template_id} - {template_name}")
             return document
             
         except Exception as e:
@@ -354,14 +406,31 @@ class VectorDBService:
         documents = []
         yaml_files = list(templates_dir.rglob("*.yaml")) + list(templates_dir.rglob("*.yml"))
         
+        logger.info(f"Found {len(yaml_files)} YAML files in {templates_dir}")
+        
+        skipped_count = 0
+        loaded_count = 0
+        
         for template_file in yaml_files:
             document = self.load_nuclei_template(template_file)
             if document:
                 documents.append(document)
+                loaded_count += 1
+            else:
+                skipped_count += 1
+            
+            # Log progress every 1000 files
+            if (loaded_count + skipped_count) % 1000 == 0:
+                logger.info(f"Progress: {loaded_count + skipped_count}/{len(yaml_files)} files processed, {loaded_count} loaded, {skipped_count} skipped")
+        
+        logger.info(f"Template loading completed: {loaded_count} valid templates loaded, {skipped_count} files skipped")
         
         if documents:
-            return await self.add_documents(documents)
+            added_count = await self.add_documents(documents)
+            logger.info(f"Successfully added {added_count} template chunks to vector database")
+            return added_count
         
+        logger.warning("No valid templates found to load")
         return 0
     
     """

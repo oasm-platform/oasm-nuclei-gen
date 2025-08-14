@@ -7,7 +7,7 @@ import os
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 import yaml
 import tempfile
 from dotenv import load_dotenv
@@ -22,7 +22,6 @@ from app.api.v1.v1_dto import (
     TemplateGenerationRequest,
     TemplateGenerationResponse,
     ValidationResult,
-    RAGSearchRequest
 )
 
 
@@ -192,9 +191,7 @@ Please generate a complete, valid YAML Nuclei template that tests for the descri
         return await self.nuclei_runner.validate_template(template_content)
     
     async def generate_template(self, request: TemplateGenerationRequest) -> TemplateGenerationResponse:
-        """Generate a Nuclei template using LLM + RAG"""
-        logger.info(f"Starting template generation for: {request.prompt[:100]}...")
-        
+        """Generate a Nuclei template using LLM + RAG"""        
         try:
             # Initialize RAG engine if needed
             if not self.rag_engine.initialized:
@@ -208,11 +205,10 @@ Please generate a complete, valid YAML Nuclei template that tests for the descri
             
             # Format retrieval context
             retrieval_context = self.rag_engine.format_retrieval_context(similar_templates)
-            
+
             # Generate template with retries
             max_retries = self.config.get("template_generation", {}).get("max_retries", 3)
             generated_template = None
-            validation_result = None
             
             last_validation_result = None
             
@@ -228,7 +224,6 @@ Please generate a complete, valid YAML Nuclei template that tests for the descri
                         if validation_result.is_valid:
                             break
                         else:
-                            logger.warning(f"Generated template failed validation (attempt {attempt + 1}): {validation_result.errors}")
                             if attempt < max_retries - 1:
                                 # Try to improve the template based on validation errors
                                 generated_template = await self._refine_template(
@@ -268,18 +263,9 @@ Please generate a complete, valid YAML Nuclei template that tests for the descri
             response = TemplateGenerationResponse(
                 success=True,
                 template_id=template_id,
-                generated_template=generated_template,
-                validation_result=validation_result,
-                retrieval_context=[doc.get("content", "")[:200] + "..." for doc in similar_templates[:3]],
-                generation_metadata={
-                    "model": self.model_name,
-                    "similar_templates_count": len(similar_templates),
-                    "generation_attempts": attempt + 1,
-                    "prompt_length": len(request.prompt)
-                }
+                generated_template=generated_template,             
             )
             
-            logger.info(f"Template generation completed successfully: {template_id}")
             return response
             
         except Exception as e:
@@ -287,13 +273,7 @@ Please generate a complete, valid YAML Nuclei template that tests for the descri
             return TemplateGenerationResponse(
                 success=False,
                 template_id="failed_generation",
-                generated_template="",
-                validation_result=ValidationResult(
-                    is_valid=False,
-                    errors=[f"Generation failed: {str(e)}"],
-                    warnings=[]
-                ),
-                generation_metadata={"error": str(e)}
+                generated_template=""
             )
     
     async def _generate_template_content(
@@ -318,14 +298,8 @@ Please generate a complete, valid YAML Nuclei template that tests for the descri
         response = await self.llm.agenerate([messages])
         generated_content = response.generations[0][0].text.strip()
         
-        # Debug: Log raw LLM response
-        logger.debug(f"Raw LLM response:\n{generated_content}")
-        
         # Extract YAML from response (in case it's wrapped in markdown)
         yaml_content = self._extract_yaml_content(generated_content)
-        
-        # Debug: Log extracted YAML
-        logger.debug(f"Extracted YAML content:\n{yaml_content}")
         
         # Validate YAML syntax before returning
         self._validate_yaml_syntax(yaml_content)
@@ -387,9 +361,7 @@ Please generate a complete, valid YAML Nuclei template that tests for the descri
         """Validate YAML syntax before nuclei validation"""
         try:
             yaml.safe_load(yaml_content)
-            logger.debug("YAML syntax validation passed")
         except yaml.YAMLError as e:
-            logger.error(f"YAML syntax validation failed: {e}")
             # Save problematic YAML to temp file for debugging
             with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
                 f.write(yaml_content)

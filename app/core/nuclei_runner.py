@@ -46,9 +46,7 @@ class NucleiRunner:
     
     async def _run_validation(self, template_path: str, template_id: str) -> ValidationResult:
         cmd = [self.nuclei_binary] + self.validate_args + ["-t", template_path]
-        
-        logger.debug(f"Running nuclei validation command: {' '.join(cmd)}")
-        
+                
         try:
             # Use asyncio.to_thread to run subprocess in a thread pool
             result = await asyncio.to_thread(
@@ -58,10 +56,6 @@ class NucleiRunner:
             )
             
             stdout_text, stderr_text, return_code = result
-            
-            logger.debug(f"Nuclei validation stdout: {stdout_text}")
-            logger.debug(f"Nuclei validation stderr: {stderr_text}")
-            logger.debug(f"Nuclei validation return code: {return_code}")
             
             return self._parse_validation_output(
                 stdout_text,
@@ -154,12 +148,6 @@ class NucleiRunner:
         # If template appears to be valid based on return code but we have no output, it might still be valid
         if return_code == 0 and not errors:
             is_valid = True
-        
-        logger.info(f"Template {template_id} validation: {'PASSED' if is_valid else 'FAILED'}")
-        if errors:
-            logger.warning(f"Validation errors for {template_id}: {errors}")
-        if warnings:
-            logger.info(f"Validation warnings for {template_id}: {warnings}")
         
         return ValidationResult(
             is_valid=is_valid,

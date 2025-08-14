@@ -18,7 +18,7 @@ class SeverityLevel(str, Enum):
 
 
 
-# Request DTOs
+# Legacy Request DTOs (deprecated, use TemplatesSearchRequest instead)
 class GetTemplatesBySeverityRequest(BaseModel):
     severity: SeverityLevel = Field(..., description="Security severity level")
     max_results: int = Field(default=10, ge=1, le=100, description="Maximum number of templates to return")
@@ -41,7 +41,7 @@ class GetTemplatesByTagsRequest(BaseModel):
         return [tag.strip() for tag in v]
 
 
-# Response DTOs
+# Shared DTOs
 class TemplateInfo(BaseModel):
     id: str = Field(..., description="Template ID")
     name: str = Field(..., description="Template name")
@@ -51,8 +51,10 @@ class TemplateInfo(BaseModel):
     tags: Optional[List[str]] = Field(None, description="Template tags")
     reference: Optional[List[str]] = Field(None, description="References")
     created_at: Optional[str] = Field(None, description="Creation timestamp")
+    content: str = Field(..., description="Full YAML template content")
 
 
+# Legacy Response DTOs (deprecated, use TemplatesSearchResponse instead)
 class GetTemplatesBySeverityResponse(BaseModel):
     severity: SeverityLevel = Field(..., description="Requested severity level")
     templates: List[TemplateInfo] = Field(..., description="List of matching templates")
@@ -169,24 +171,7 @@ class TemplateGenerationResponse(BaseModel):
     success: bool = Field(..., description="Generation success status")
     template_id: str = Field(..., description="Generated template ID")
     generated_template: str = Field(..., description="Generated YAML template")
-    validation_result: ValidationResult = Field(..., description="Template validation result")
-    retrieval_context: Optional[List[str]] = Field(None, description="Retrieved similar templates")
-    generation_metadata: Dict[str, Any] = Field(default={}, description="Generation metadata")
     created_at: datetime = Field(default_factory=datetime.utcnow)
-
-
-
-
-class RAGSearchRequest(BaseModel):
-    query: str = Field(..., min_length=5, max_length=500, description="Search query")
-    max_results: int = Field(default=5, ge=1, le=20, description="Maximum results")
-    similarity_threshold: float = Field(default=0.7, ge=0.0, le=1.0, description="Similarity threshold")
-
-
-class RAGSearchResponse(BaseModel):
-    results: List[Dict[str, Any]] = Field(..., description="Search results")
-    query: str = Field(..., description="Original query")
-    total_results: int = Field(..., description="Total number of results")
 
 
 class UpdateRAGDataRequest(BaseModel):
@@ -205,3 +190,90 @@ class UpdateRAGDataResponse(BaseModel):
     templates_loaded: int = Field(default=0, description="Number of templates loaded to database")
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     metadata: Dict[str, Any] = Field(default={}, description="Additional metadata")
+
+
+# Consolidated templates API DTOs
+class SearchType(str, Enum):
+    SEMANTIC = "semantic"
+    SEVERITY = "severity"
+    TAGS = "tags"
+    ALL = "all"
+
+
+class SortBy(str, Enum):
+    NAME = "name"
+    SEVERITY = "severity"
+    CREATED_AT = "created_at"
+    AUTHOR = "author"
+    ID = "id"
+
+
+class SortOrder(str, Enum):
+    ASC = "asc"
+    DESC = "desc"
+
+
+class TemplatesSearchRequest(BaseModel):
+    search_type: SearchType = Field(..., description="Type of search to perform")
+    query: Optional[str] = Field(None, description="Search query for semantic search")
+    severity: Optional[SeverityLevel] = Field(None, description="Severity level for severity search")
+    tags: Optional[List[str]] = Field(None, description="Tags for tag-based search")
+    
+    # Pagination parameters
+    page: int = Field(default=1, ge=1, description="Page number (1-based)")
+    limit: int = Field(default=10, ge=1, le=100, description="Number of results per page")
+    
+    # Sorting parameters
+    sort_by: SortBy = Field(default=SortBy.NAME, description="Field to sort by")
+    sort_order: SortOrder = Field(default=SortOrder.ASC, description="Sort order")
+    
+    # Legacy parameter for backward compatibility
+    max_results: Optional[int] = Field(None, ge=1, le=100, description="Legacy: Maximum number of templates to return (use limit instead)")
+    similarity_threshold: float = Field(default=0.7, ge=0.0, le=1.0, description="Similarity threshold for semantic search")
+    
+    @model_validator(mode='after')
+    def validate_search_params(self):
+        if self.search_type == SearchType.SEMANTIC and not self.query:
+            raise ValueError("Query is required for semantic search")
+        elif self.search_type == SearchType.SEVERITY and not self.severity:
+            raise ValueError("Severity is required for severity search")
+        elif self.search_type == SearchType.TAGS and not self.tags:
+            raise ValueError("Tags are required for tag search")
+        
+        if self.tags:
+            for tag in self.tags:
+                if not isinstance(tag, str) or len(tag.strip()) == 0:
+                    raise ValueError('All tags must be non-empty strings')
+                if len(tag.strip()) > 50:
+                    raise ValueError('Tag length cannot exceed 50 characters')
+        
+        # Handle legacy max_results parameter
+        if self.max_results is not None:
+            # Use max_results as limit for backward compatibility
+            self.limit = self.max_results
+        
+        return self
+
+
+class PaginationMetadata(BaseModel):
+    page: int = Field(..., ge=1, description="Current page number")
+    limit: int = Field(..., ge=1, description="Results per page")
+    total_results: int = Field(..., ge=0, description="Total number of results across all pages")
+    total_pages: int = Field(..., ge=0, description="Total number of pages")
+    has_next: bool = Field(..., description="Whether there are more pages")
+    has_prev: bool = Field(..., description="Whether there are previous pages")
+
+
+class TemplatesSearchResponse(BaseModel):
+    search_type: SearchType = Field(..., description="Type of search performed")
+    query: Optional[str] = Field(None, description="Search query used")
+    severity: Optional[SeverityLevel] = Field(None, description="Severity level used")
+    tags: Optional[List[str]] = Field(None, description="Tags used")
+    sort_by: SortBy = Field(..., description="Field used for sorting")
+    sort_order: SortOrder = Field(..., description="Sort order used")
+    templates: List[str] = Field(..., description="List of matching template YAML content as strings")
+    pagination: PaginationMetadata = Field(..., description="Pagination information")
+    search_metadata: Optional[Dict[str, Any]] = Field(None, description="Additional search metadata")
+    
+    # Legacy field for backward compatibility
+    total_results: int = Field(..., ge=0, description="Legacy: Total number of results (use pagination.total_results instead)")
