@@ -1,21 +1,5 @@
 # Multi-stage build for smaller final image
-FROM python:3.11-slim AS builder
-
-# Install build dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
-
-# Copy requirements and install Python dependencies in builder stage
-COPY requirements.txt .
-RUN pip install --no-cache-dir --user -r requirements.txt \
-    && find /root/.local -name "*.pyc" -delete \
-    && find /root/.local -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true \
-    && find /root/.local -name "*.dist-info" -type d -exec rm -rf {}/RECORD {} + 2>/dev/null || true
-
-# Final runtime stage
-FROM python:3.11-slim
+FROM python:3.11-slim AS base
 
 # Set production environment variables
 ENV PYTHONPATH=/app \
@@ -43,6 +27,27 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean \
     && apt-get autoremove -y
+
+FROM python:3.11-slim AS builder
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Copy requirements and install Python dependencies in builder stage
+COPY requirements.txt .
+RUN pip install --no-cache-dir --user -r requirements.txt \
+    && find /root/.local -name "*.pyc" -delete \
+    && find /root/.local -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true \
+    && find /root/.local -name "*.dist-info" -type d -exec rm -rf {}/RECORD {} + 2>/dev/null || true
+
+# Final runtime stage
+FROM base
+
+# Set working directory
+WORKDIR /app
 
 # Copy Python dependencies from builder stage
 COPY --from=builder /root/.local /home/nuclei/.local
