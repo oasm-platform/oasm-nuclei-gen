@@ -11,9 +11,8 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1.endpoints import router as v1_router
-from app.core.nuclei_service import NucleiTemplateService
-from app.api.middlewares.auth import TokenAuthMiddleware
+from app.api import v1_router, TokenAuthMiddleware
+from app.core import NucleiTemplateService
 
 # Load environment variables
 load_dotenv()

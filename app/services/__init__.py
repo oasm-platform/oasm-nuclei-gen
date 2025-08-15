@@ -1,1 +1,7 @@
-"""Services for Nuclei AI Agent Template Generator"""
+"""Services for Nuclei AI Template Generator"""
+
+from .vector_db import VectorDatabase
+
+__all__ = [
+    "VectorDatabase",
+]
