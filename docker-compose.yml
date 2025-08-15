@@ -4,12 +4,8 @@ services:
     container_name: nuclei_chromadb
     ports:
       - "${CHROMADB_EXTERNAL_PORT}:${CHROMADB_PORT}"
-    environment:
-      - CHROMA_SERVER_AUTHN_CREDENTIALS_FILE=${CHROMA_SERVER_AUTHN_CREDENTIALS_FILE}
-      - CHROMA_SERVER_AUTHN_PROVIDER=${CHROMA_SERVER_AUTHN_PROVIDER}
-      - ANONYMIZED_TELEMETRY=${ANONYMIZED_TELEMETRY}
-      - IS_PERSISTENT=${IS_PERSISTENT}
-      - PERSIST_DIRECTORY=${PERSIST_DIRECTORY}
+    env_file:
+      - .env
     volumes:
       - chromadb_data:/chroma/chroma
     networks:
@@ -35,54 +31,8 @@ services:
     container_name: nuclei_agent_api
     ports:
       - "${API_EXTERNAL_PORT}:${API_PORT}"
-    environment:
-      # App Configuration
-      - APP_NAME=${APP_NAME}
-      - APP_VERSION=${APP_VERSION}
-      - APP_DEBUG=${APP_DEBUG}
-      - APP_HOST=${API_HOST}
-      - APP_PORT=${API_PORT}
-      # Vector Database Configuration
-      - VECTOR_DB_HOST=${CHROMADB_HOST}
-      - VECTOR_DB_PORT=${CHROMADB_PORT}
-      - VECTOR_DB_MODE=${VECTOR_DB_MODE}
-      - VECTOR_DB_TYPE=${VECTOR_DB_TYPE}
-      - VECTOR_DB_COLLECTION_NAME=${VECTOR_DB_COLLECTION_NAME}
-      - VECTOR_DB_EMBEDDING_MODEL=${VECTOR_DB_EMBEDDING_MODEL}
-      - VECTOR_DB_CHUNK_SIZE=${VECTOR_DB_CHUNK_SIZE}
-      - VECTOR_DB_CHUNK_OVERLAP=${VECTOR_DB_CHUNK_OVERLAP}
-      # LLM Configuration
-      - LLM_PROVIDER=${LLM_PROVIDER}
-      - LLM_MODEL=${LLM_MODEL}
-      - LLM_TEMPERATURE=${LLM_TEMPERATURE}
-      - LLM_MAX_TOKENS=${LLM_MAX_TOKENS}
-      - LLM_TIMEOUT=${LLM_TIMEOUT}
-      # API Keys
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      # Nuclei Configuration
-      - NUCLEI_BINARY_PATH=${NUCLEI_BINARY_PATH}
-      - NUCLEI_TIMEOUT=${NUCLEI_TIMEOUT}
-      - NUCLEI_VALIDATE_ARGS=${NUCLEI_VALIDATE_ARGS}
-      - NUCLEI_TEMPLATES_DIR=${NUCLEI_TEMPLATES_DIR}
-      # RAG Configuration
-      - RAG_MAX_RETRIEVED_DOCS=${RAG_MAX_RETRIEVED_DOCS}
-      - RAG_SIMILARITY_THRESHOLD=${RAG_SIMILARITY_THRESHOLD}
-      - RAG_SEARCH_TYPE=${RAG_SEARCH_TYPE}
-      # Logging Configuration
-      - LOG_LEVEL=${LOG_LEVEL}
-      - LOG_FORMAT=${LOG_FORMAT}
-      - LOG_FILE_PATH=${LOG_FILE_PATH}
-      - LOG_MAX_BYTES=${LOG_MAX_BYTES}
-      - LOG_BACKUP_COUNT=${LOG_BACKUP_COUNT}
-      # Template Generation Configuration
-      - TEMPLATE_MAX_RETRIES=${TEMPLATE_MAX_RETRIES}
-      - TEMPLATE_VALIDATION_REQUIRED=${TEMPLATE_VALIDATION_REQUIRED}
-      - TEMPLATE_OUTPUT_FORMAT=${TEMPLATE_OUTPUT_FORMAT}
-      - TEMPLATE_INCLUDE_METADATA=${TEMPLATE_INCLUDE_METADATA}
-      # Python Configuration
-      - PYTHONPATH=${PYTHONPATH}
-      - PYTHONUNBUFFERED=${PYTHONUNBUFFERED}
+    env_file:
+      - .env
     volumes:
       - ./config:/app/config
       - ./logs:/app/logs
@@ -111,45 +61,9 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: nuclei_agent_scheduler
-    environment:
-      # Vector Database Configuration
-      - VECTOR_DB_HOST=${CHROMADB_HOST}
-      - VECTOR_DB_PORT=${CHROMADB_PORT}
-      - VECTOR_DB_MODE=${VECTOR_DB_MODE}
-      - VECTOR_DB_TYPE=${VECTOR_DB_TYPE}
-      - VECTOR_DB_COLLECTION_NAME=${VECTOR_DB_COLLECTION_NAME}
-      - VECTOR_DB_EMBEDDING_MODEL=${VECTOR_DB_EMBEDDING_MODEL}
-      - VECTOR_DB_CHUNK_SIZE=${VECTOR_DB_CHUNK_SIZE}
-      - VECTOR_DB_CHUNK_OVERLAP=${VECTOR_DB_CHUNK_OVERLAP}
-      # LLM Configuration
-      - LLM_PROVIDER=${LLM_PROVIDER}
-      - LLM_MODEL=${LLM_MODEL}
-      - LLM_TEMPERATURE=${LLM_TEMPERATURE}
-      - LLM_MAX_TOKENS=${LLM_MAX_TOKENS}
-      - LLM_TIMEOUT=${LLM_TIMEOUT}
-      # API Keys
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      # Nuclei Configuration
-      - NUCLEI_TEMPLATES_DIR=${NUCLEI_TEMPLATES_DIR}
-      - NUCLEI_TIMEOUT=${NUCLEI_TIMEOUT}
-      - NUCLEI_VALIDATE_ARGS=${NUCLEI_VALIDATE_ARGS}
-      # RAG Configuration
-      - RAG_MAX_RETRIEVED_DOCS=${RAG_MAX_RETRIEVED_DOCS}
-      - RAG_SIMILARITY_THRESHOLD=${RAG_SIMILARITY_THRESHOLD}
-      - RAG_SEARCH_TYPE=${RAG_SEARCH_TYPE}
-      # Template Auto-Update Configuration
-      - AUTO_UPDATE_TEMPLATE_NUCLEI=${AUTO_UPDATE_TEMPLATE_NUCLEI}
-      - TIME_UPDATE_TEMPLATE=${TIME_UPDATE_TEMPLATE}
-      # Logging Configuration
-      - LOG_LEVEL=${LOG_LEVEL}
-      - LOG_FORMAT=${LOG_FORMAT}
-      - LOG_FILE_PATH=${LOG_FILE_PATH}
-      - LOG_MAX_BYTES=${LOG_MAX_BYTES}
-      - LOG_BACKUP_COUNT=${LOG_BACKUP_COUNT}
-      # Python Configuration
-      - PYTHONPATH=${PYTHONPATH}
-      - PYTHONUNBUFFERED=${PYTHONUNBUFFERED}
+    env_file:
+      - .env
+
     volumes:
       - ./config:/app/config
       - ./logs:/app/logs
