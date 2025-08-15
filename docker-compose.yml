@@ -28,7 +28,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: nuclei_agent_api
+    container_name: nuclei_template_gen
     ports:
       - "${API_EXTERNAL_PORT}:${API_PORT}"
     env_file:
@@ -60,7 +60,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: nuclei_agent_scheduler
+    container_name: nuclei_template_scheduler
     env_file:
       - .env
 

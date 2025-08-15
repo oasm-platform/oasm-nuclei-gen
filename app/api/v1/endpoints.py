@@ -1,6 +1,6 @@
 """
 API v1 endpoints for Nuclei template generation using LLM + RAG
-Simplified version without complex agent pattern
+Simplified version without complex pattern
 """
 import logging
 

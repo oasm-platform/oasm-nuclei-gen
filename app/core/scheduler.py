@@ -1,5 +1,5 @@
 """
-Standalone scheduler for RAG data updates in the Nuclei AI Agent Template Generator
+Standalone scheduler for RAG data updates in the Nuclei AI Template Generator
 Run this as: python scheduler.py
 """
 import asyncio

@@ -1,6 +1,6 @@
 """
 Nuclei Template Service - Simplified service using LLM + RAG directly
-This replaces the complex Agent pattern with a simpler approach
+This replaces the complex pattern with a simpler approach
 """
 import logging
 import os
