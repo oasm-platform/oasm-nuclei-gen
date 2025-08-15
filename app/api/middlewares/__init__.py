@@ -1,0 +1,1 @@
+"""API middlewares for Nuclei AI Template Generator"""

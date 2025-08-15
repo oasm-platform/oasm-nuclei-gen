@@ -8,7 +8,7 @@
 
 ## 📖 Overview
 
-**OASM Nuclei Agent** is an intelligent AI-powered system that automatically generates high-quality Nuclei security templates using advanced **Large Language Models (LLM)** combined with **Retrieval-Augmented Generation (RAG)**.
+**OASM Nuclei Generator** is an intelligent AI-powered system that automatically generates high-quality Nuclei security templates using advanced **Large Language Models (LLM)** combined with **Retrieval-Augmented Generation (RAG)**.
 
 🎯 **Purpose**: Transform natural language vulnerability descriptions into production-ready Nuclei YAML templates with automatic validation and refinement.
 
@@ -30,7 +30,7 @@
 ## 📁 Project Structure
 
 ```
-oasm-nuclei-agent/
+oasm-nuclei-gen/
 ├── 🐳 docker-compose.yml          # Microservices orchestration (api, chromadb, scheduler)
 ├── 📋 Dockerfile                  # Container build for all services
 ├── ⚙️ .env                        # Environment configuration

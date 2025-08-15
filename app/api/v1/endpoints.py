@@ -36,10 +36,6 @@ async def generate_template(
     """
     try:        
         response = await service.generate_template(request_data)
-        
-        if response.success:
-            logger.info(f"Template generated successfully: {response.template_id}")
-        
         return response
         
     except Exception as e:

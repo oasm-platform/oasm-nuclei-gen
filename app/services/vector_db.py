@@ -47,13 +47,10 @@ class VectorDBService:
                 self.embeddings = SentenceTransformer(embedding_model, local_files_only=True)
             except Exception as e:
                 logger.warning(f"Failed to load model from cache: {e}")
-                logger.info(f"Attempting to download model: {embedding_model}")
                 try:
                     self.embeddings = SentenceTransformer(embedding_model)
                 except Exception as download_error:
                     logger.error(f"Failed to download model: {download_error}")
-                    logger.info("Falling back to default embedding model")
-                    # Fallback to a basic model that might be available locally
                     self.embeddings = SentenceTransformer('all-MiniLM-L6-v2', local_files_only=True)
     
     """
@@ -170,9 +167,7 @@ class VectorDBService:
             )
             
             total_added += len(batch_docs)
-            logger.info(f"Added batch {i//batch_size + 1}: {len(batch_docs)} chunks ({total_added}/{len(processed_docs)} total)")
         
-        logger.info(f"Successfully added {total_added} document chunks to vector database")
         return total_added
     
     """
@@ -258,8 +253,6 @@ class VectorDBService:
                         }
                         filtered_results.append(result)
             
-            logger.info(f"Search completed: {len(filtered_results)}/{len(results['documents'][0]) if results['documents'] else 0} results passed threshold")
-            
             return filtered_results
             
         except Exception as e:
@@ -287,7 +280,6 @@ class VectorDBService:
         if self.collection:
             self.client.delete_collection(self.collection.name)
             self.collection = None
-            logger.info("Collection deleted")
     
     """
     Clear the collection
@@ -306,7 +298,6 @@ class VectorDBService:
                 metadata={"hnsw:space": "cosine"}
             )
             
-            logger.info(f"Collection '{collection_name}' cleared successfully")
             return {
                 "status": "success",
                 "message": f"Collection '{collection_name}' cleared successfully",
@@ -406,31 +397,15 @@ class VectorDBService:
         documents = []
         yaml_files = list(templates_dir.rglob("*.yaml")) + list(templates_dir.rglob("*.yml"))
         
-        logger.info(f"Found {len(yaml_files)} YAML files in {templates_dir}")
-        
-        skipped_count = 0
-        loaded_count = 0
-        
         for template_file in yaml_files:
             document = self.load_nuclei_template(template_file)
             if document:
                 documents.append(document)
-                loaded_count += 1
-            else:
-                skipped_count += 1
-            
-            # Log progress every 1000 files
-            if (loaded_count + skipped_count) % 1000 == 0:
-                logger.info(f"Progress: {loaded_count + skipped_count}/{len(yaml_files)} files processed, {loaded_count} loaded, {skipped_count} skipped")
-        
-        logger.info(f"Template loading completed: {loaded_count} valid templates loaded, {skipped_count} files skipped")
         
         if documents:
             added_count = await self.add_documents(documents)
-            logger.info(f"Successfully added {added_count} template chunks to vector database")
             return added_count
         
-        logger.warning("No valid templates found to load")
         return 0
     
     """
@@ -446,7 +421,6 @@ class VectorDBService:
                 
                 # Remove the entire directory and its contents
                 shutil.rmtree(rag_data_dir)
-                logger.info(f"Removed {total_files} files from {rag_data_path} directory")
                 
                 return {
                     "status": "success",
@@ -454,7 +428,6 @@ class VectorDBService:
                     "files_removed": total_files
                 }
             else:
-                logger.info(f"RAG data directory {rag_data_path} does not exist")
                 return {
                     "status": "success",
                     "message": f"RAG data directory {rag_data_path} does not exist",
@@ -481,15 +454,12 @@ class VectorDBService:
             
             templates_dir = rag_data_dir / "nuclei_templates"
             
-            logger.info("Downloading latest Nuclei templates from GitHub...")
-            
             # Clone or update the nuclei-templates repository
             repo_url = "https://github.com/projectdiscovery/nuclei-templates.git"
             
             try:
                 if templates_dir.exists():
                     # If directory exists, update it
-                    logger.info(f"Updating existing templates in {templates_dir}")
                     result = subprocess.run(
                         ["git", "pull", "origin", "main"],
                         cwd=templates_dir,
@@ -509,7 +479,6 @@ class VectorDBService:
                         )
                 else:
                     # Clone fresh repository
-                    logger.info(f"Cloning templates to {templates_dir}")
                     result = subprocess.run(
                         ["git", "clone", "--depth", "1", repo_url, str(templates_dir)],
                         capture_output=True,
@@ -529,8 +498,6 @@ class VectorDBService:
                 # Count downloaded template files
                 yaml_files = list(templates_dir.rglob("*.yaml")) + list(templates_dir.rglob("*.yml"))
                 templates_count = len(yaml_files)
-                
-                logger.info(f"Successfully downloaded {templates_count} templates")
                 
                 return {
                     "status": "success",
@@ -562,7 +529,6 @@ class VectorDBService:
     """
     async def update_rag_data(self, rag_data_path: str = "rag_data") -> Dict[str, Any]:
         try:
-            logger.info("Starting complete RAG data update...")
             result = {
                 "status": "success",
                 "message": "RAG data update completed successfully",
@@ -573,7 +539,6 @@ class VectorDBService:
             }
             
             # Step 1: Clear existing data
-            logger.info("Step 1: Clearing existing RAG data and collection...")
             clear_dir_result = await self.clear_rag_data_directory(rag_data_path)
             clear_collection_result = await self.clear_collection()
             
@@ -589,7 +554,6 @@ class VectorDBService:
                 result["steps"].append("Cleared vector database collection")
             
             # Step 2: Download latest templates
-            logger.info("Step 2: Downloading latest templates...")
             download_result = await self.download_latest_templates(rag_data_path)
             
             if download_result["status"] == "success":
@@ -603,7 +567,6 @@ class VectorDBService:
                 # Continue to try loading existing templates if any
             
             # Step 3: Load templates into database
-            logger.info("Step 3: Loading templates into vector database...")
             templates_path = Path(rag_data_path) / "nuclei_templates"
             
             if templates_path.exists():
@@ -629,7 +592,6 @@ class VectorDBService:
                 result["status"] = "failed"
                 result["message"] = "RAG data update failed"
             
-            logger.info(f"RAG data update completed: {result['message']}")
             return result
             
         except Exception as e:

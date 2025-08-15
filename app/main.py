@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.endpoints import router as v1_router
 from app.core.nuclei_service import NucleiTemplateService
+from app.api.middlewares.auth import TokenAuthMiddleware
 
 # Load environment variables
 load_dotenv()
@@ -22,10 +23,8 @@ load_dotenv()
 log_level = os.getenv("LOG_LEVEL", "INFO").upper()
 log_format = os.getenv("LOG_FORMAT", "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 log_file_path = os.getenv("LOG_FILE_PATH", "logs/app.log")
-
 # Ensure logs directory exists
 Path(log_file_path).parent.mkdir(parents=True, exist_ok=True)
-
 logging.basicConfig(
     level=getattr(logging, log_level, logging.INFO),
     format=log_format,
@@ -34,13 +33,9 @@ logging.basicConfig(
         logging.StreamHandler()
     ]
 )
-
 # Suppress watchfiles INFO messages
 logging.getLogger("watchfiles").setLevel(logging.WARNING)
-
 logger = logging.getLogger(__name__)
-
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -51,7 +46,6 @@ async def lifespan(app: FastAPI):
         nuclei_service = NucleiTemplateService()
         await nuclei_service.rag_engine.initialize()
         app.state.nuclei_service = nuclei_service
-        logger.info("Nuclei Template Service initialized successfully")
     except Exception as e:
         logger.error(f"Failed to initialize Nuclei Template Service: {e}")
         raise
@@ -74,6 +68,12 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+
+# Add authentication middleware
+app.add_middleware(
+    TokenAuthMiddleware,
+    excluded_paths=["/health", "/docs", "/redoc", "/openapi.json"]
 )
 
 app.include_router(v1_router, prefix="/api/v1", tags=["v1"])
