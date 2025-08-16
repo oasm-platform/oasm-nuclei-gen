@@ -6,6 +6,9 @@ from datetime import datetime
 from typing import Dict, List, Optional, Any
 from pydantic import BaseModel, Field, field_validator
 
+# Import common models from core to avoid circular imports
+from app.core.models import ValidationResult, TemplateGenerationRequest, TemplateGenerationResponse
+
 
 class ReloadTemplatesResponse(BaseModel):
     success: bool = Field(..., description="Whether reload was successful")
@@ -35,23 +38,8 @@ class ClearRAGCollectionResponse(BaseModel):
             raise ValueError(f'Status must be one of: {", ".join(valid_statuses)}')
         return v
 
-class ValidationResult(BaseModel):
-    is_valid: bool = Field(..., description="Whether template is valid")
-    errors: List[str] = Field(default=[], description="Validation errors")
-    warnings: List[str] = Field(default=[], description="Validation warnings")
-
 
 class ErrorResponse(BaseModel):
     error: str = Field(..., description="Error message")
     details: Optional[Dict[str, Any]] = Field(None, description="Error details")
     timestamp: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
-
-class TemplateGenerationRequest(BaseModel):
-    prompt: str = Field(..., min_length=10, max_length=2000, description="Text prompt describing the vulnerability or security test")
-
-
-class TemplateGenerationResponse(BaseModel):
-    success: bool = Field(..., description="Generation success status")
-    template_id: str = Field(..., description="Generated template ID")
-    generated_template: str = Field(..., description="Generated YAML template")
-    created_at: datetime = Field(default_factory=datetime.utcnow)

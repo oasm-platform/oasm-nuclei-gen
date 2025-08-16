@@ -9,17 +9,14 @@ import signal
 import sys
 from pathlib import Path
 
-from dotenv import load_dotenv
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
+from app.core.config_service import ConfigService
 from app.core.nuclei_service import NucleiTemplateService
 
-# Load environment variables
-load_dotenv()
 
-
-# Configure logging using environment variables
+# Configure logging using environment variables for basic setup
 log_level = os.getenv("LOG_LEVEL", "INFO").upper()
 log_format = os.getenv("LOG_FORMAT", "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 log_file_path = os.getenv("LOG_FILE_PATH", "logs/app.log")
@@ -46,6 +43,7 @@ class StandaloneRAGScheduler:
     """
     
     def __init__(self):
+        self.settings = ConfigService.get_settings()
         self.scheduler = AsyncIOScheduler()
         self.running = False
     
@@ -64,9 +62,11 @@ class StandaloneRAGScheduler:
             if not nuclei_service.rag_engine.initialized:
                 await nuclei_service.rag_engine.initialize()
             
-            # Perform the RAG data update
+            # Perform the RAG data update using templates directory from config
+            templates_dir = self.settings.nuclei.templates_dir
+            rag_data_path = str(Path(templates_dir).parent)
             result = await nuclei_service.rag_engine.vector_db.update_rag_data(
-                rag_data_path="rag_data"
+                rag_data_path=rag_data_path
             )
             
             if result["status"] == "success":

@@ -7,18 +7,18 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 import uvicorn
-from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import v1_router, TokenAuthMiddleware
-from app.core import NucleiTemplateService
-
-# Load environment variables
-load_dotenv()
+from app.core.config_service import ConfigService
+from app.core.nuclei_service import NucleiTemplateService
 
 
-# Configure logging using environment variables
+# Get settings from ConfigService
+settings = ConfigService.get_settings()
+
+# Configure logging using environment variables (keeping for logging setup)
 log_level = os.getenv("LOG_LEVEL", "INFO").upper()
 log_format = os.getenv("LOG_FORMAT", "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 log_file_path = os.getenv("LOG_FILE_PATH", "logs/app.log")
@@ -55,9 +55,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title=os.getenv("APP_NAME", "Nuclei Template Generator"),
+    title=settings.app.name,
     description="🕵️‍♂️ AI Genetate Template Nuclei For Cybersecurity Attack Surface Management (ASM).",
-    version=os.getenv("APP_VERSION", "1.0.0"),
+    version=settings.app.version,
     lifespan=lifespan
 )
 
@@ -82,8 +82,8 @@ app.include_router(v1_router, prefix="/api/v1", tags=["v1"])
 async def health_check():
     stats = await app.state.nuclei_service.rag_engine.get_collection_stats()
     return {
-        "message": os.getenv("APP_NAME", "Nuclei Template Generator"),
-        "version": os.getenv("APP_VERSION", "1.0.0"),
+        "message": settings.app.name,
+        "version": settings.app.version,
         "status": "healthy",
         "collection_name": stats.get("collection_name", ""),
         "total_documents": stats.get("total_documents", 0)
@@ -91,16 +91,11 @@ async def health_check():
 
 
 if __name__ == "__main__":
-    # Get configuration from environment variables
-    host = os.getenv("APP_HOST", "localhost")
-    port = int(os.getenv("APP_PORT", "8000"))
-    debug = os.getenv("APP_DEBUG", "false").lower() == "true"
-    log_level = os.getenv("LOG_LEVEL", "info").lower()
-    
+    # Get configuration from settings
     uvicorn.run(
         "app.main:app",
-        host=host,
-        port=port,
+        host=settings.app.host,
+        port=settings.app.port,
         reload=True,
-        log_level=log_level
+        log_level=os.getenv("LOG_LEVEL", "info").lower()
     )

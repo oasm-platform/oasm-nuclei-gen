@@ -6,21 +6,22 @@ import logging
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 import yaml
 
-from app.api.v1.v1_dto import ValidationResult
+from app.core.models import ValidationResult
+from app.core.config_service import ConfigService
 
 
 logger = logging.getLogger(__name__)
 
 
 class NucleiRunner:
-    def __init__(self, config: Optional[Dict[str, str]] = None):
-        self.config = config or {}
-        self.nuclei_binary = self.config.get("binary_path", "nuclei")
-        self.timeout = self.config.get("timeout", 30)
-        self.validate_args = self.config.get("validate_args", ["--validate", "--verbose"])
+    def __init__(self):
+        self.settings = ConfigService.get_settings()
+        self.nuclei_binary = self.settings.nuclei.binary_path
+        self.timeout = self.settings.nuclei.timeout
+        self.validate_args = self.settings.nuclei.validate_args_list
     
     async def validate_template(self, template_content: str, template_id: Optional[str] = None) -> ValidationResult:
         template_id = template_id or "temp_template"

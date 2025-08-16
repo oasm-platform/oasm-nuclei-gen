@@ -10,84 +10,27 @@ from pathlib import Path
 from typing import Dict, Any, List
 import yaml
 import tempfile
-from dotenv import load_dotenv
 
 from langchain.schema import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI
 
+from app.core.config_service import ConfigService
 from app.core.rag_engine import RAGEngine
 from app.core.nuclei_runner import NucleiRunner
-from app.api.v1.v1_dto import (
-    TemplateGenerationRequest,
-    TemplateGenerationResponse,
-    ValidationResult,
-)
+from app.core.models import ValidationResult, TemplateGenerationRequest, TemplateGenerationResponse
 
 
 logger = logging.getLogger(__name__)
-
-
-class ConfigService:
-    """Configuration service to load settings from environment variables"""
-    
-    @staticmethod
-    def load_config() -> Dict[str, Any]:
-        """Load configuration from environment variables"""
-        load_dotenv()
-        
-        return {
-            "app": {
-                "name": os.getenv("APP_NAME", "Nuclei Template Generator"),
-                "version": os.getenv("APP_VERSION", "1.0.0"),
-                "debug": os.getenv("APP_DEBUG", "false").lower() == "true",
-                "host": os.getenv("APP_HOST", "0.0.0.0"),
-                "port": int(os.getenv("APP_PORT", "8000"))
-            },
-            "llm": {
-                "provider": os.getenv("LLM_PROVIDER", "gemini"),
-                "model": os.getenv("LLM_MODEL", "gemini-2.0-flash-exp"),
-                "temperature": float(os.getenv("LLM_TEMPERATURE", "0.7")),
-                "max_tokens": int(os.getenv("LLM_MAX_TOKENS", "2000")),
-                "timeout": int(os.getenv("LLM_TIMEOUT", "30"))
-            },
-            "vector_db": {
-                "type": os.getenv("VECTOR_DB_TYPE", "chromadb"),
-                "mode": os.getenv("VECTOR_DB_MODE", "client"),
-                "host": os.getenv("VECTOR_DB_HOST", "localhost"),
-                "port": int(os.getenv("VECTOR_DB_PORT", "8001")),
-                "collection_name": os.getenv("VECTOR_DB_COLLECTION_NAME", "nuclei_templates"),
-                "embedding_model": os.getenv("VECTOR_DB_EMBEDDING_MODEL", "all-MiniLM-L6-v2"),
-                "chunk_size": int(os.getenv("VECTOR_DB_CHUNK_SIZE", "1000")),
-                "chunk_overlap": int(os.getenv("VECTOR_DB_CHUNK_OVERLAP", "200"))
-            },
-            "nuclei": {
-                "binary_path": os.getenv("NUCLEI_BINARY_PATH", "nuclei"),
-                "timeout": int(os.getenv("NUCLEI_TIMEOUT", "30")),
-                "templates_dir": os.getenv("NUCLEI_TEMPLATES_DIR", "./rag_data/nuclei_templates"),
-                "validate_args": os.getenv("NUCLEI_VALIDATE_ARGS", "--validate,--verbose").split(",")
-            },
-            "rag": {
-                "max_retrieved_docs": int(os.getenv("RAG_MAX_RETRIEVED_DOCS", "5")),
-                "similarity_threshold": float(os.getenv("RAG_SIMILARITY_THRESHOLD", "0.7")),
-                "search_type": os.getenv("RAG_SEARCH_TYPE", "similarity")
-            },
-            "template_generation": {
-                "max_retries": int(os.getenv("TEMPLATE_MAX_RETRIES", "3")),
-                "validation_required": os.getenv("TEMPLATE_VALIDATION_REQUIRED", "true").lower() == "true",
-                "output_format": os.getenv("TEMPLATE_OUTPUT_FORMAT", "yaml"),
-                "include_metadata": os.getenv("TEMPLATE_INCLUDE_METADATA", "true").lower() == "true"
-            }
-        }
 
 
 class NucleiTemplateService:
     """Simple service that directly uses LLM + RAG for template generation"""
     
     def __init__(self):
-        self.config = ConfigService.load_config()
-        self.rag_engine = RAGEngine(self.config)
-        self.nuclei_runner = NucleiRunner(self.config.get("nuclei", {}))
+        self.settings = ConfigService.get_settings()
+        self.rag_engine = RAGEngine()
+        self.nuclei_runner = NucleiRunner()
         self.llm = self._initialize_llm()
         self.model_name = self._get_model_name()
         self.system_prompt = self._load_system_prompt()
@@ -95,8 +38,7 @@ class NucleiTemplateService:
         
     def _initialize_llm(self):
         """Initialize LLM from environment variables"""
-        llm_config = self.config.get("llm", {})
-        provider = llm_config.get("provider", "gemini")
+        provider = self.settings.llm.provider
         
         logger.info(f"Initializing LLM with provider: {provider}")
         
@@ -106,10 +48,10 @@ class NucleiTemplateService:
                 raise ValueError("GEMINI_API_KEY environment variable is required for Gemini provider")
             
             return ChatGoogleGenerativeAI(
-                model=llm_config.get("model", "gemini-2.0-flash-exp"),
-                temperature=llm_config.get("temperature", 0.7),
-                max_tokens=llm_config.get("max_tokens", 2000),
-                timeout=llm_config.get("timeout", 30),
+                model=self.settings.llm.model,
+                temperature=self.settings.llm.temperature,
+                max_tokens=self.settings.llm.max_tokens,
+                timeout=self.settings.llm.timeout,
                 google_api_key=api_key
             )
         else:  # OpenAI
@@ -118,21 +60,16 @@ class NucleiTemplateService:
                 raise ValueError("OPENAI_API_KEY environment variable is required for OpenAI provider")
             
             return ChatOpenAI(
-                model=llm_config.get("model", "gpt-4"),
-                temperature=llm_config.get("temperature", 0.7),
-                max_tokens=llm_config.get("max_tokens", 2000),
-                timeout=llm_config.get("timeout", 30),
+                model=self.settings.llm.model,
+                temperature=self.settings.llm.temperature,
+                max_tokens=self.settings.llm.max_tokens,
+                timeout=self.settings.llm.timeout,
                 openai_api_key=api_key
             )
     
     def _get_model_name(self) -> str:
         """Get the model name from configuration"""
-        llm_config = self.config.get("llm", {})
-        provider = llm_config.get("provider", "gemini")
-        if provider == "gemini":
-            return llm_config.get("model", "gemini-2.0-flash-exp")
-        else:
-            return llm_config.get("model", "gpt-4")
+        return self.settings.llm.model
     
     def _load_system_prompt(self) -> str:
         """Load system prompt from file or use default"""
@@ -167,7 +104,7 @@ Please generate a complete, valid YAML Nuclei template that tests for the descri
             "rag_engine_initialized": self.rag_engine.initialized,
             "rag_collection_stats": rag_stats,
             "llm_model": self.model_name,
-            "config_loaded": bool(self.config)
+            "config_loaded": bool(self.settings)
         }
 
     async def search_templates(
@@ -200,14 +137,14 @@ Please generate a complete, valid YAML Nuclei template that tests for the descri
             # Retrieve similar templates for context
             similar_templates = await self.rag_engine.retrieve_similar_templates(
                 query=request.prompt,
-                max_results=self.config.get("rag", {}).get("max_retrieved_docs", 5)
+                max_results=self.settings.rag.max_retrieved_docs
             )
             
             # Format retrieval context
             retrieval_context = self.rag_engine.format_retrieval_context(similar_templates)
 
             # Generate template with retries
-            max_retries = self.config.get("template_generation", {}).get("max_retries", 3)
+            max_retries = self.settings.template_generation.max_retries
             generated_template = None
             
             last_validation_result = None
@@ -217,7 +154,7 @@ Please generate a complete, valid YAML Nuclei template that tests for the descri
                     generated_template = await self._generate_template_content(request, retrieval_context)
                     
                     # Validate the generated template
-                    if self.config.get("template_generation", {}).get("validation_required", True):
+                    if self.settings.template_generation.validation_required:
                         validation_result = await self.nuclei_runner.validate_template(generated_template)
                         last_validation_result = validation_result
                         

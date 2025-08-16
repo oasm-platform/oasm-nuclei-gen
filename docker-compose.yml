@@ -75,7 +75,7 @@ services:
       chromadb:
         condition: service_healthy
     restart: unless-stopped
-    command: ["python", "-m", "app.core.scheduler"]
+    command: ["python", "-m", "app.scheduler"]
 
 volumes:
   chromadb_data:

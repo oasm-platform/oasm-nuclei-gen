@@ -6,7 +6,7 @@ import logging
 
 from fastapi import APIRouter, HTTPException, Depends, Request
 
-from app.core import NucleiTemplateService
+from app.core.nuclei_service import NucleiTemplateService
 from .v1_dto import (
     TemplateGenerationRequest,
     TemplateGenerationResponse,
