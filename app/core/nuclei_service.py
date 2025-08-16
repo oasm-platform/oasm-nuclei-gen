@@ -1,6 +1,5 @@
 """
-Nuclei Template Service - Simplified service using LLM + RAG directly
-This replaces the complex pattern with a simpler approach
+Nuclei Template Service - Simplified service
 """
 import logging
 import os
@@ -9,7 +8,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List
 import yaml
-import tempfile
 
 from langchain.schema import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
@@ -17,20 +15,18 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 
 from app.core.config_service import ConfigService
 from app.core.rag_engine import RAGEngine
-from app.core.nuclei_runner import NucleiRunner
-from app.core.models import ValidationResult, TemplateGenerationRequest, TemplateGenerationResponse
+from app.core.models import TemplateGenerationRequest, TemplateGenerationResponse
 
 
 logger = logging.getLogger(__name__)
 
 
 class NucleiTemplateService:
-    """Simple service that directly uses LLM + RAG for template generation"""
+    """Nuclei Template Service"""
     
     def __init__(self):
         self.settings = ConfigService.get_settings()
         self.rag_engine = RAGEngine()
-        self.nuclei_runner = NucleiRunner()
         self.llm = self._initialize_llm()
         self.model_name = self._get_model_name()
         self.system_prompt = self._load_system_prompt()
@@ -92,20 +88,6 @@ Similar templates for reference:
 
 Please generate a complete, valid YAML Nuclei template that tests for the described vulnerability or security issue."""
 
-    async def get_system_status(self) -> Dict[str, Any]:
-        """Get system status information"""
-        nuclei_available = await self.nuclei_runner.check_nuclei_available()
-        nuclei_version = await self.nuclei_runner.get_nuclei_version()
-        rag_stats = await self.rag_engine.get_collection_stats()
-        
-        return {
-            "nuclei_available": nuclei_available,
-            "nuclei_version": nuclei_version,
-            "rag_engine_initialized": self.rag_engine.initialized,
-            "rag_collection_stats": rag_stats,
-            "llm_model": self.model_name,
-            "config_loaded": bool(self.settings)
-        }
 
     async def search_templates(
         self, 
@@ -123,12 +105,9 @@ Please generate a complete, valid YAML Nuclei template that tests for the descri
             similarity_threshold=similarity_threshold
         )
 
-    async def validate_template(self, template_content: str) -> ValidationResult:
-        """Validate a template using Nuclei runner"""
-        return await self.nuclei_runner.validate_template(template_content)
     
     async def generate_template(self, request: TemplateGenerationRequest) -> TemplateGenerationResponse:
-        """Generate a Nuclei template using LLM + RAG"""        
+        """Generate a Nuclei template"""        
         try:
             # Initialize RAG engine if needed
             if not self.rag_engine.initialized:
@@ -143,55 +122,8 @@ Please generate a complete, valid YAML Nuclei template that tests for the descri
             # Format retrieval context
             retrieval_context = self.rag_engine.format_retrieval_context(similar_templates)
 
-            # Generate template with retries
-            max_retries = self.settings.template_generation.max_retries
-            generated_template = None
-            
-            last_validation_result = None
-            
-            for attempt in range(max_retries):
-                try:
-                    generated_template = await self._generate_template_content(request, retrieval_context)
-                    
-                    # Validate the generated template
-                    if self.settings.template_generation.validation_required:
-                        validation_result = await self.nuclei_runner.validate_template(generated_template)
-                        last_validation_result = validation_result
-                        
-                        if validation_result.is_valid:
-                            break
-                        else:
-                            if attempt < max_retries - 1:
-                                # Try to improve the template based on validation errors
-                                generated_template = await self._refine_template(
-                                    generated_template, 
-                                    validation_result, 
-                                    request
-                                )
-                            else:
-                                # Last attempt failed, set template to None
-                                generated_template = None
-                    else:
-                        validation_result = ValidationResult(is_valid=True, errors=[], warnings=[])
-                        last_validation_result = validation_result
-                        break
-                        
-                except Exception as e:
-                    logger.error(f"Template generation attempt {attempt + 1} failed: {e}")
-                    last_validation_result = ValidationResult(
-                        is_valid=False, 
-                        errors=[f"Generation attempt {attempt + 1} failed: {str(e)}"], 
-                        warnings=[]
-                    )
-                    if attempt == max_retries - 1:
-                        generated_template = None
-            
-            # Check if we have a valid template
-            if not generated_template or (last_validation_result and not last_validation_result.is_valid):
-                error_msg = "Failed to generate valid template after all retries"
-                if last_validation_result:
-                    error_msg += f". Last validation errors: {last_validation_result.errors}"
-                raise Exception(error_msg)
+            # Generate template
+            generated_template = await self._generate_template_content(request, retrieval_context)
             
             # Extract template ID
             template_id = self._extract_template_id(generated_template)
@@ -238,8 +170,6 @@ Please generate a complete, valid YAML Nuclei template that tests for the descri
         # Extract YAML from response (in case it's wrapped in markdown)
         yaml_content = self._extract_yaml_content(generated_content)
         
-        # Validate YAML syntax before returning
-        self._validate_yaml_syntax(yaml_content)
         
         return yaml_content
     
@@ -313,41 +243,3 @@ Please generate a complete, valid YAML Nuclei template that tests for the descri
         except:
             return f"generated_{uuid.uuid4().hex[:8]}"
     
-    async def _refine_template(
-        self, 
-        template_content: str, 
-        validation_result: ValidationResult, 
-        original_request: TemplateGenerationRequest
-    ) -> str:
-        """Refine template based on validation errors"""
-        refinement_prompt = f"""
-The generated Nuclei template has validation errors. Please fix the following issues:
-
-Validation Errors:
-{chr(10).join(validation_result.errors)}
-
-Validation Warnings:
-{chr(10).join(validation_result.warnings)}
-
-Original Template:
-```yaml
-{template_content}
-```
-
-Please provide a corrected version of the template that addresses these validation issues while maintaining the original functionality for detecting: {original_request.prompt}
-"""
-        
-        messages = [
-            SystemMessage(content=self.system_prompt),
-            HumanMessage(content=refinement_prompt)
-        ]
-        
-        response = await self.llm.agenerate([messages])
-        refined_content = response.generations[0][0].text.strip()
-        
-        refined_yaml = self._extract_yaml_content(refined_content)
-        
-        # Debug: Log refined YAML
-        logger.debug(f"Refined YAML content:\n{refined_yaml}")
-        
-        return refined_yaml

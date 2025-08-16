@@ -66,7 +66,6 @@ class RAGSettings(BaseSettings):
 class TemplateGenerationSettings(BaseSettings):
     """Template generation settings"""
     max_retries: int = Field(default=3, description="Maximum retries for generation")
-    validation_required: bool = Field(default=True, description="Validation required")
     output_format: str = Field(default="yaml", description="Output format")
     include_metadata: bool = Field(default=True, description="Include metadata")
 

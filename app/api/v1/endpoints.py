@@ -1,5 +1,5 @@
 """
-API v1 endpoints for Nuclei template generation using LLM + RAG
+API v1 endpoints for Nuclei template generation
 Simplified version without complex pattern
 """
 import logging
@@ -32,7 +32,7 @@ async def generate_template(
     service: NucleiTemplateService = Depends(get_nuclei_service)
 ) -> TemplateGenerationResponse:
     """
-    Generate a new Nuclei security template using LLM + RAG from a simple text prompt.
+    Generate a new Nuclei security template from a simple text prompt.
     """
     try:        
         response = await service.generate_template(request_data)

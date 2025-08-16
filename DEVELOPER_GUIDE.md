@@ -142,12 +142,6 @@ LOG_FILE_PATH=logs/app.log
 LOG_MAX_BYTES=10485760
 LOG_BACKUP_COUNT=5
 
-# Template Generation Configuration
-TEMPLATE_MAX_RETRIES=3
-TEMPLATE_VALIDATION_REQUIRED=true
-TEMPLATE_OUTPUT_FORMAT=yaml
-TEMPLATE_INCLUDE_METADATA=true
-
 # Scheduler Configuration
 AUTO_UPDATE_TEMPLATE_NUCLEI=true
 TIME_UPDATE_TEMPLATE=19:19
@@ -362,7 +356,6 @@ curl -X DELETE http://localhost:8000/api/v1/rag_collection \
 ```bash
 APP_DEBUG=true
 LOG_LEVEL=DEBUG
-TEMPLATE_VALIDATION_REQUIRED=false
 AUTO_UPDATE_TEMPLATE_NUCLEI=false
 ```
 
@@ -371,7 +364,6 @@ AUTO_UPDATE_TEMPLATE_NUCLEI=false
 ```bash
 APP_DEBUG=false
 LOG_LEVEL=INFO
-TEMPLATE_VALIDATION_REQUIRED=true
 AUTO_UPDATE_TEMPLATE_NUCLEI=true
 TIME_UPDATE_TEMPLATE=02:00
 ```
@@ -563,14 +555,6 @@ curl http://localhost:8001/api/v2/version
 | `RAG_MAX_RETRIEVED_DOCS`   | `5`          | Context documents count |
 | `RAG_SIMILARITY_THRESHOLD` | `0.7`        | Similarity threshold    |
 | `RAG_SEARCH_TYPE`          | `similarity` | Search algorithm        |
-
-### ✅ Validation Configuration
-
-| Variable                       | Default | Description                |
-| ------------------------------ | ------- | -------------------------- |
-| `TEMPLATE_VALIDATION_REQUIRED` | `true`  | Enable template validation |
-| `TEMPLATE_MAX_RETRIES`         | `3`     | Max generation retries     |
-| `NUCLEI_TIMEOUT`               | `30`    | Nuclei validation timeout  |
 
 ### ⏰ Scheduler Configuration
 

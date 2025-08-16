@@ -1,5 +1,5 @@
 """
-Main entry point of the Nuclei Template Generator (LLM + RAG)
+Main entry point of the Nuclei Template Generator
 """
 import logging
 import os
@@ -10,7 +10,7 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import v1_router, TokenAuthMiddleware
+from app.api import router, TokenAuthMiddleware
 from app.core.config_service import ConfigService
 from app.core.nuclei_service import NucleiTemplateService
 
@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Starting Nuclei Template Generator (LLM + RAG)")
+    logger.info("Starting Nuclei Template Generator")
     
     # Initialize Nuclei Template Service
     try:
@@ -75,7 +75,7 @@ app.add_middleware(
     excluded_paths=["/health", "/docs", "/redoc", "/openapi.json"]
 )
 
-app.include_router(v1_router, prefix="/api/v1", tags=["v1"])
+app.include_router(router, prefix="/api/v1", tags=["v1"])
 
 
 @app.get("/health")

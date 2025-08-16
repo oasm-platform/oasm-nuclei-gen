@@ -1,9 +1,9 @@
 """API package for Nuclei AI Template Generator"""
 
-from .v1 import router as v1_router
+from .v1.endpoints import router
 from .middlewares import TokenAuthMiddleware
 
 __all__ = [
-    "v1_router",
+    "router",
     "TokenAuthMiddleware",
 ]

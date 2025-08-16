@@ -7,7 +7,7 @@ from typing import Dict, List, Optional, Any
 from pydantic import BaseModel, Field, field_validator
 
 # Import common models from core to avoid circular imports
-from app.core.models import ValidationResult, TemplateGenerationRequest, TemplateGenerationResponse
+from app.core.models import TemplateGenerationRequest, TemplateGenerationResponse
 
 
 class ReloadTemplatesResponse(BaseModel):

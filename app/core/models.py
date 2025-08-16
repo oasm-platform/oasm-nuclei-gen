@@ -6,12 +6,6 @@ from typing import List
 from pydantic import BaseModel, Field
 
 
-class ValidationResult(BaseModel):
-    """Model for template validation results"""
-    is_valid: bool = Field(..., description="Whether template is valid")
-    errors: List[str] = Field(default=[], description="Validation errors")
-    warnings: List[str] = Field(default=[], description="Validation warnings")
-
 
 class TemplateGenerationRequest(BaseModel):
     """Request model for template generation"""
