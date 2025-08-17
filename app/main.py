@@ -80,14 +80,25 @@ app.include_router(router, prefix="/api/v1", tags=["v1"])
 
 @app.get("/health")
 async def health_check():
-    stats = await app.state.nuclei_service.rag_engine.get_collection_stats()
-    return {
-        "message": settings.app.name,
-        "version": settings.app.version,
-        "status": "healthy",
-        "collection_name": stats.get("collection_name", ""),
-        "total_documents": stats.get("total_documents", 0)
-    }
+    try:
+        stats = await app.state.nuclei_service.rag_engine.get_collection_stats()
+        status = "healthy" if not stats.get("error") else "degraded"
+        return {
+            "message": settings.app.name,
+            "version": settings.app.version,
+            "status": status,
+            "collection_name": stats.get("collection_name", ""),
+            "total_documents": stats.get("total_documents", 0)
+        }
+    except Exception as e:
+        return {
+            "message": settings.app.name,
+            "version": settings.app.version,
+            "status": "degraded",
+            "collection_name": "unknown",
+            "total_documents": 0,
+            "error": str(e)
+        }
 
 
 if __name__ == "__main__":

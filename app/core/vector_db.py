@@ -215,15 +215,10 @@ class VectorDBService:
         if not self.collection:
             raise RuntimeError("Vector database not initialized")
         
-        try:
-            logger.debug(f"Searching for query: '{query}' with max_results={max_results}, threshold={similarity_threshold}")
-            
+        try:            
             # Check collection count first
             count = self.collection.count()
-            logger.debug(f"Collection has {count} documents")
-            
             if count == 0:
-                logger.warning("Collection is empty - no documents to search")
                 return []
             
             # Generate query embedding
@@ -267,11 +262,18 @@ class VectorDBService:
         if not self.collection:
             return {"error": "Collection not initialized"}
         
-        count = self.collection.count()
-        return {
-            "total_documents": count,
-            "collection_name": self.collection.name
-        }
+        try:
+            count = self.collection.count()
+            return {
+                "total_documents": count,
+                "collection_name": self.collection.name
+            }
+        except Exception as e:
+            return {
+                "total_documents": 0,
+                "collection_name": "unknown",
+                "error": str(e)
+            }
     
     """
     Delete the collection
@@ -465,7 +467,7 @@ class VectorDBService:
                         cwd=templates_dir,
                         capture_output=True,
                         text=True,
-                        timeout=300  # 5 minutes timeout
+                        timeout=600 # 10 minutes timeout
                     )
                     
                     if result.returncode != 0:
@@ -507,7 +509,7 @@ class VectorDBService:
                 }
                 
             except subprocess.TimeoutExpired:
-                error_msg = "Template download timed out after 5 minutes"
+                error_msg = "Template download timed out after 10 minutes"
                 logger.error(error_msg)
                 return {
                     "status": "failed",

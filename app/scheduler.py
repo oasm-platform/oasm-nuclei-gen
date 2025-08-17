@@ -15,6 +15,9 @@ from apscheduler.triggers.cron import CronTrigger
 from app.core.config_service import ConfigService
 from app.core.nuclei_service import NucleiTemplateService
 
+from dotenv import load_dotenv
+load_dotenv()
+
 
 # Configure logging using environment variables for basic setup
 log_level = os.getenv("LOG_LEVEL", "INFO").upper()

@@ -4,7 +4,6 @@ Nuclei Template Service - Simplified service
 import logging
 import os
 import uuid
-from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List
 import yaml

@@ -108,6 +108,7 @@ Template Content:
         
         return await self.vector_db.get_collection_stats()
     
+    
     async def reload_templates(self, templates_dir: Optional[Path] = None) -> int:
         if not self.initialized:
             await self.initialize()
