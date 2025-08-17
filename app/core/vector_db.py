@@ -10,6 +10,7 @@ import shutil
 import chromadb
 from chromadb.config import Settings
 import os
+import stat
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 from sentence_transformers import SentenceTransformer
@@ -28,7 +29,6 @@ class VectorDBService:
         self._setup_text_splitter()
     
     """
-
     Setup embeddings based on the configuration
     """
     def _setup_embeddings(self):
@@ -65,6 +65,56 @@ class VectorDBService:
             chunk_overlap=chunk_overlap,
             length_function=len,
         )
+    
+    """
+    Force remove read-only files/directories on Windows
+    """
+    def _force_remove_readonly(self, func, path, exc_info):
+        """
+        Error handler for shutil.rmtree to handle read-only files on Windows
+        """
+        if os.path.exists(path):
+            # Make the file writable and try again
+            os.chmod(path, stat.S_IWRITE)
+            func(path)
+    
+    """
+    Safely remove directory with read-only files
+    """
+    def _safe_rmtree(self, path):
+        """
+        Safely remove directory tree, handling read-only files on Windows
+        """
+        try:
+            if os.path.exists(path):
+                # First attempt: normal removal
+                shutil.rmtree(path)
+        except (PermissionError, OSError) as e:
+            logger.warning(f"First removal attempt failed: {e}, trying with forced removal")
+            try:
+                # Second attempt: force remove read-only files
+                shutil.rmtree(path, onerror=self._force_remove_readonly)
+            except Exception as e2:
+                logger.warning(f"Forced removal failed: {e2}, trying alternative approach")
+                try:
+                    # Third attempt: change permissions recursively then remove
+                    for root, dirs, files in os.walk(path):
+                        for d in dirs:
+                            dir_path = os.path.join(root, d)
+                            try:
+                                os.chmod(dir_path, stat.S_IWRITE)
+                            except:
+                                pass
+                        for f in files:
+                            file_path = os.path.join(root, f)
+                            try:
+                                os.chmod(file_path, stat.S_IWRITE)
+                            except:
+                                pass
+                    shutil.rmtree(path)
+                except Exception as e3:
+                    logger.error(f"All removal attempts failed: {e3}")
+                    raise
     
     """
     Initialize the vector database based on the configuration
@@ -421,8 +471,8 @@ class VectorDBService:
                 # Count files before deletion
                 total_files = sum(1 for _ in rag_data_dir.rglob("*") if _.is_file())
                 
-                # Remove the entire directory and its contents
-                shutil.rmtree(rag_data_dir)
+                # Use safe removal method
+                self._safe_rmtree(str(rag_data_dir))
                 
                 return {
                     "status": "success",
@@ -461,32 +511,17 @@ class VectorDBService:
             
             try:
                 if templates_dir.exists():
-                    # If directory exists, update it
-                    result = subprocess.run(
-                        ["git", "pull", "origin", "main"],
-                        cwd=templates_dir,
-                        capture_output=True,
-                        text=True,
-                        timeout=600 # 10 minutes timeout
-                    )
-                    
-                    if result.returncode != 0:
-                        logger.warning(f"Git pull failed, removing directory and cloning fresh")
-                        shutil.rmtree(templates_dir)
-                        result = subprocess.run(
-                            ["git", "clone", "--depth", "1", repo_url, str(templates_dir)],
-                            capture_output=True,
-                            text=True,
-                            timeout=300
-                        )
-                else:
-                    # Clone fresh repository
-                    result = subprocess.run(
-                        ["git", "clone", "--depth", "1", repo_url, str(templates_dir)],
-                        capture_output=True,
-                        text=True,
-                        timeout=300
-                    )
+                    # If directory exists, remove it first to avoid permission issues
+                    logger.info("Removing existing templates directory")
+                    self._safe_rmtree(str(templates_dir))
+                
+                # Always clone fresh to avoid git issues
+                result = subprocess.run(
+                    ["git", "clone", "--depth", "1", repo_url, str(templates_dir)],
+                    capture_output=True,
+                    text=True,
+                    timeout=300
+                )
                 
                 if result.returncode != 0:
                     error_msg = f"Failed to download templates: {result.stderr}"
@@ -509,7 +544,7 @@ class VectorDBService:
                 }
                 
             except subprocess.TimeoutExpired:
-                error_msg = "Template download timed out after 10 minutes"
+                error_msg = "Template download timed out after 5 minutes"
                 logger.error(error_msg)
                 return {
                     "status": "failed",
